@@ -1,4 +1,4 @@
-const API_URL_VENTAS = "http://localhost:3000/api";
+const API_URL = "https://kalel-tintometric-nonefficiently.ngrok-free.dev/api";
 let productosParaVenta = [];
 let factura = [];
 
