@@ -8,7 +8,11 @@ async function cargarInsumos() {
   tabla.innerHTML = "<tr><td colspan='6'>Cargando...</td></tr>";
   
   try {
-    const res = await fetch(`${API_URL_INS}/insumos`);
+    const res = await fetch(`${API_URL_INS}/insumos`, {
+        headers: {
+            'ngrok-skip-browser-warning': 'true'
+        }
+    });
     if (!res.ok) throw new Error("Error de red");
     const insumos = await res.json();
     
@@ -43,7 +47,11 @@ function renderizarInsumos(insumos) {
 // --- SELECT DE PROVEEDORES ---
 async function cargarProveedoresSelect(selectId, seleccionado = null) {
   try {
-    const res = await fetch(`${API_URL_INS}/proveedores`);
+    const res = await fetch(`${API_URL_INS}/proveedores`, {
+        headers: {
+            'ngrok-skip-browser-warning': 'true'
+        }
+    });
     if (!res.ok) throw new Error("Error cargando proveedores");
     const proveedores = await res.json();
     
@@ -76,7 +84,10 @@ async function agregarInsumo(event) {
   try {
     const res = await fetch(`${API_URL_INS}/insumos`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+      },
       body: JSON.stringify({ nombre, unidad, precio, proveedor_id: proveedor_id ? parseInt(proveedor_id) : null })
     });
 
@@ -96,7 +107,12 @@ async function eliminarInsumo(id) {
   if (!confirm("¿Estás seguro que quieres eliminar este insumo?")) return;
   
   try {
-    const res = await fetch(`${API_URL_INS}/insumos/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_URL_INS}/insumos/${id}`, { 
+        method: 'DELETE',
+        headers: {
+            'ngrok-skip-browser-warning': 'true'
+        }
+    });
     if (!res.ok) throw new Error("Error al eliminar");
 
     mostrarNotificacion({ titulo: "Eliminado", mensaje: "Insumo eliminado correctamente.", tipo: "success" });
@@ -109,7 +125,11 @@ async function eliminarInsumo(id) {
 // --- ABRIR MODAL EDICIÓN ---
 async function abrirEditarInsumo(id) {
   try {
-    const res = await fetch(`${API_URL_INS}/insumos/${id}`);
+    const res = await fetch(`${API_URL_INS}/insumos/${id}`, {
+        headers: {
+            'ngrok-skip-browser-warning': 'true'
+        }
+    });
     if (!res.ok) throw new Error("Error al cargar insumo");
     const data = await res.json();
 
@@ -139,7 +159,10 @@ async function actualizarInsumo(event) {
   try {
     const res = await fetch(`${API_URL_INS}/insumos/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+      },
       body: JSON.stringify({ nombre, unidad, precio, proveedor_id: proveedor_id ? parseInt(proveedor_id) : null })
     });
 

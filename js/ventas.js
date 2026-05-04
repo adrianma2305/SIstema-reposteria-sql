@@ -1,235 +1,189 @@
-const API_URL_VENTAS = "https://kalel-tintometric-nonefficiently.ngrok-free.dev/api";
-let productosParaVenta = [];
-let factura = [];
+const API_URL_PROV = "https://kalel-tintometric-nonefficiently.ngrok-free.dev/api";
+let proveedoresOriginal = [];
 
-// 1. CARGAR PRODUCTOS EN LA CUADRÍCULA 
-async function cargarProductosParaVenta() {
+// --- CARGAR PROVEEDORES ---
+async function cargarProveedores() {
+  const tabla = document.querySelector("#proveedores-table tbody");
+  tabla.innerHTML = "<tr><td colspan='5'>Cargando...</td></tr>";
+  
   try {
-    const res = await fetch(`${API_URL_VENTAS}/productos`);
-    if (!res.ok) throw new Error("Error al cargar productos");
-    const productos = await res.json();
+    const res = await fetch(`${API_URL_PROV}/proveedores`, {
+        headers: {
+            'ngrok-skip-browser-warning': 'true'
+        }
+    });
+    if (!res.ok) throw new Error("Error de red");
+    const proveedores = await res.json();
     
-    productosParaVenta = productos;
-    renderizarGridProductosVenta(productos);
-  } catch(error) {
-    console.error("Error cargando productos para venta:", error);
+    proveedoresOriginal = proveedores;
+    renderizarProveedores(proveedores);
+  } catch (error) {
+    tabla.innerHTML = "<tr><td colspan='5'>Error al cargar los proveedores.</td></tr>";
   }
 }
 
-function renderizarGridProductosVenta(listado) {
-  const grid = document.getElementById("grid-productos-venta");
-  grid.innerHTML = "";
-  listado.forEach((p) => {
-    grid.insertAdjacentHTML("beforeend", `
-      <div class="col">
-        <div class="card producto-card h-100" onclick="agregarAFactura(${p.id})">
-          <div class="card-body text-center">
-            <h6 class="mb-1">${p.nombre}</h6>
-            <div class="mb-2 text-muted small">C$ ${p.precio.toFixed(2)}</div>
-          </div>
-        </div>
-      </div>
+// --- RENDERIZAR TABLA ---
+function renderizarProveedores(proveedores) {
+  const tabla = document.querySelector("#proveedores-table tbody");
+  tabla.innerHTML = "";
+
+  const fecha = new Date();
+  const hoyStr = fecha.toISOString().split('T')[0];
+
+  proveedores.forEach((p) => {
+    let claseFila = "";
+    let titulo = "";
+    let textoFechaClass = "";
+    
+    // Formatear la fecha que viene de SQL Server
+    let fechaFormat = "";
+    let fechaMostrar = "";
+    if (p.entrega) {
+        fechaFormat = p.entrega.split('T')[0];
+        fechaMostrar = new Date(fechaFormat + 'T12:00:00').toLocaleDateString();
+        
+        if (fechaFormat <= hoyStr) {
+            claseFila = "table-warning";
+            textoFechaClass = "fw-bold text-danger";
+            titulo = 'title="⚠ La fecha de entrega ya pasó o es hoy"';
+        }
+    }
+
+    // Botones siempre visibles
+    const botonesAccion = `
+      <button class="btn btn-sm btn-danger" onclick="eliminarProveedor(${p.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+      <button class="btn btn-sm btn-info" onclick="abrirEditarProveedor(${p.id})" title="Editar"><i class="bi bi-pencil"></i></button>
+    `;
+
+    tabla.insertAdjacentHTML("beforeend", `
+      <tr class="${claseFila}" ${titulo}>
+        <td>${p.id}</td>
+        <td>${p.nombre}</td>
+        <td>${p.telefono || ""}</td>
+        <td class="${textoFechaClass}">${fechaMostrar}</td>
+        <td>${botonesAccion}</td>
+      </tr>
     `);
   });
 }
 
-// 2. LÓGICA DE LA FACTURA 
-window.agregarAFactura = function (id) {
-  
-  const prod = productosParaVenta.find((p) => p.id == id);
-  
-  if (!prod) {
-    console.error("Error: No se encontró el producto con ID", id);
-    return;
-  }
+// --- AGREGAR PROVEEDOR ---
+async function agregarProveedor(event) {
+  event.preventDefault();
+  const nombre = document.getElementById("nombre-proveedor").value.trim();
+  const telefono = document.getElementById("telefono-proveedor").value.trim();
+  const entrega = document.getElementById("entrega-proveedor").value || null;
 
-  const idx = factura.findIndex((item) => item.id == id);
-  if (idx >= 0) {
-    factura[idx].cantidad += 1;
-  } else {
-    factura.push({ id: prod.id, nombre: prod.nombre, precio: parseFloat(prod.precio), cantidad: 1 });
-  }
-  
-  renderFactTabla();
-};
-
-function renderFactTabla() {
-  const tbody = document.getElementById("tabla-factura");
-  tbody.innerHTML = "";
-  let total = 0;
-  
-  factura.forEach((item) => {
-    const subtotal = item.precio * item.cantidad;
-    total += subtotal;
-    tbody.insertAdjacentHTML("beforeend", `
-      <tr>
-        <td>${item.nombre}</td>
-        <td>
-          <input type="number" min="1" value="${item.cantidad}" onchange="setCantidadFact(${item.id},this.value)">
-          <button class="btn btn-link btn-sm p-0 ms-2" onclick="quitarDeFactura(${item.id})"><i class="bi bi-x-lg text-danger"></i></button>
-        </td>
-        <td>C$ ${subtotal.toFixed(2)}</td>
-        <td></td>
-      </tr>`
-    );
-  });
-  
-  document.getElementById("factura-total").innerText = "C$ " + total.toFixed(2);
-  document.getElementById("btn-guardar-venta").disabled = factura.length === 0;
-}
-
-window.setCantidadFact = function (id, val) {
-  val = Math.max(1, parseInt(val));
-  const prod = factura.find((p) => p.id == id);
-  if (prod) prod.cantidad = val;
-  renderFactTabla();
-};
-
-window.quitarDeFactura = function (id) {
-  factura = factura.filter((item) => item.id != id);
-  renderFactTabla();
-};
-
-// Búsqueda rápida de productos
-document.getElementById("busqueda-venta-productos").addEventListener("input", function () {
-  const val = this.value.trim().toLowerCase();
-  const filtrados = productosParaVenta.filter((p) => p.nombre.toLowerCase().includes(val));
-  renderizarGridProductosVenta(filtrados);
-});
-
-// 3. GUARDAR LA VENTA Y CREAR CLIENTE 
-async function obtenerOCrearCliente() {
-  const nombreInput = document.getElementById("cliente-nombre");
-  const telInput = document.getElementById("cliente-telefono");
-
-  if (!nombreInput || !telInput) return null;
-
-  const nombre = nombreInput.value.trim();
-  const telefono = telInput.value.trim();
-
-  if (!nombre) return null;
+  if (!nombre) return mostrarNotificacion({ titulo: "Faltan datos", mensaje: "El nombre es obligatorio.", tipo: "warning" });
 
   try {
-    // 1. Buscar si el cliente ya existe
-    const resBusq = await fetch(`${API_URL_VENTAS}/clientes?nombre=${encodeURIComponent(nombre)}`);
-    const encontrados = await resBusq.json();
-
-    if (encontrados && encontrados.length > 0) {
-      return encontrados[0].id; // Retornamos el id
-    }
-
-    // 2. Si no existe, lo creamos
-    const resCrear = await fetch(`${API_URL_VENTAS}/clientes`, {
+    const res = await fetch(`${API_URL_PROV}/proveedores`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre, telefono })
+      headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+      },
+      body: JSON.stringify({ nombre, telefono, entrega })
     });
-    
-    const nuevo = await resCrear.json();
-    return nuevo.id; // se retorna el ID
 
+    if (!res.ok) throw new Error("Error al guardar");
+
+    mostrarNotificacion({ titulo: "Proveedor agregado", mensaje: "Proveedor agregado correctamente.", tipo: "success" });
+    bootstrap.Modal.getInstance(document.getElementById("modalAgregarProveedor")).hide();
+    document.getElementById("form-agregar-proveedor").reset();
+    cargarProveedores();
   } catch (error) {
-    console.error("Error procesando cliente", error);
-    return null;
+    mostrarNotificacion({ titulo: "Error", mensaje: "No se pudo agregar el proveedor.", tipo: "error" });
   }
 }
 
-document.getElementById("btn-guardar-venta").onclick = async function () {
-  if (factura.length === 0) return;
+// --- ELIMINAR PROVEEDOR ---
+async function eliminarProveedor(id) {
+  if (!confirm("¿Estás seguro que quieres eliminar este proveedor?")) return;
   
-  
-  document.getElementById("btn-guardar-venta").disabled = true;
+  try {
+    const res = await fetch(`${API_URL_PROV}/proveedores/${id}`, { 
+        method: 'DELETE',
+        headers: {
+            'ngrok-skip-browser-warning': 'true'
+        }
+    });
+    if (!res.ok) throw new Error("Error al eliminar");
 
-  const clienteId = await obtenerOCrearCliente();
-  const empleadoIdStr = localStorage.getItem("usuario_id");
-  const empleadoId = empleadoIdStr ? parseInt(empleadoIdStr) : null;
+    mostrarNotificacion({ titulo: "Eliminado", mensaje: "Proveedor eliminado correctamente.", tipo: "success" });
+    cargarProveedores();
+  } catch (error) {
+    mostrarNotificacion({ titulo: "Error", mensaje: "No se pudo eliminar el proveedor.", tipo: "error" });
+  }
+}
+
+// --- ABRIR MODAL EDICIÓN ---
+async function abrirEditarProveedor(id) {
+  try {
+    const res = await fetch(`${API_URL_PROV}/proveedores/${id}`, {
+        headers: {
+            'ngrok-skip-browser-warning': 'true'
+        }
+    });
+    if (!res.ok) throw new Error("Error al cargar");
+    const data = await res.json();
+
+    document.getElementById("edit-id-proveedor").value = data.id;
+    document.getElementById("edit-nombre-proveedor").value = data.nombre;
+    document.getElementById("edit-telefono-proveedor").value = data.telefono || "";
+    document.getElementById("edit-entrega-proveedor").value = data.entrega ? data.entrega.split('T')[0] : "";
+
+    const modal = new bootstrap.Modal(document.getElementById("modalEditarProveedor"));
+    modal.show();
+  } catch (error) {
+    mostrarNotificacion({ titulo: "Error", mensaje: "No se pudo cargar el proveedor.", tipo: "error" });
+  }
+}
+
+// --- ACTUALIZAR PROVEEDOR ---
+async function actualizarProveedor(event) {
+  event.preventDefault();
+  const id = parseInt(document.getElementById("edit-id-proveedor").value);
+  const nombre = document.getElementById("edit-nombre-proveedor").value.trim();
+  const telefono = document.getElementById("edit-telefono-proveedor").value.trim();
+  const entrega = document.getElementById("edit-entrega-proveedor").value || null;
+
+  if (!nombre) return mostrarNotificacion({titulo: "Error", mensaje: "El nombre no puede estar vacío", tipo: "warning"});
 
   try {
-    // Guardamos cada producto de la factura como un registro de venta
-    for (let item of factura) {
-      await fetch(`${API_URL_VENTAS}/ventas`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          producto_id: item.id,
-          cantidad: item.cantidad,
-          precio_unitario: item.precio,
-          total: item.cantidad * item.precio,
-          cliente_id: clienteId,
-          empleado_id: empleadoId
-        })
-      });
-    }
-
-    factura = [];
-    renderFactTabla();
-    document.getElementById("cliente-nombre").value = "";
-    document.getElementById("cliente-telefono").value = "";
-
-    cargarVentas();
-    mostrarNotificacion({ titulo: "Venta registrada", mensaje: "Venta registrada correctamente.", tipo: "success" });
-  } catch (error) {
-    mostrarNotificacion({ titulo: "Error", mensaje: "No se pudo registrar la venta.", tipo: "error" });
-    document.getElementById("btn-guardar-venta").disabled = false;
-  }
-};
-
-// 4. CARGAR HISTORIAL DE VENTAS 
-async function cargarVentas() {
-  const tabla = document.querySelector("#ventas-table tbody");
-  tabla.innerHTML = "<tr><td colspan='8'>Cargando...</td></tr>";
-
-  try {
-    const res = await fetch(`${API_URL_VENTAS}/ventas`);
-    if (!res.ok) throw new Error("Error de red");
-    const ventas = await res.json();
-
-    tabla.innerHTML = "";
-    ventas.forEach((v) => {
-      const fechaStr = v.fecha ? new Date(v.fecha).toLocaleString() : "";
-      tabla.insertAdjacentHTML("beforeend", `
-        <tr>
-          <td>${v.id}</td>
-          <td>${v.producto?.nombre || "Producto eliminado"}</td>
-          <td>${v.cantidad}</td>
-          <td>${v.precio_unitario !== null ? v.precio_unitario.toFixed(2) : ""}</td>
-          <td>${v.total !== null ? v.total.toFixed(2) : ""}</td>
-          <td>${fechaStr}</td>
-          <td>${v.cliente?.nombre || ""}</td>
-          <td>${v.empleado?.nombre || ""}</td>
-        </tr>
-      `);
+    const res = await fetch(`${API_URL_PROV}/proveedores/${id}`, {
+      method: 'PUT',
+      headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+      },
+      body: JSON.stringify({ nombre, telefono, entrega })
     });
+
+    if (!res.ok) throw new Error("Error al actualizar");
+
+    mostrarNotificacion({ titulo: "Actualizado", mensaje: "Proveedor actualizado correctamente.", tipo: "success" });
+    bootstrap.Modal.getInstance(document.getElementById("modalEditarProveedor")).hide();
+    cargarProveedores();
   } catch (error) {
-    tabla.innerHTML = `<tr><td colspan='8'>Error al cargar las ventas.</td></tr>`;
-    console.error(error);
+    mostrarNotificacion({ titulo: "Error", mensaje: "No se pudo actualizar el proveedor.", tipo: "error" });
   }
 }
 
-async function iniciarPOSVenta() {
-  await cargarProductosParaVenta();
-  factura = [];
-  renderFactTabla();
+// --- BUSCADOR Y EVENTOS ---
+function filtrarProveedores() {
+  const valor = document.getElementById("busqueda-proveedores").value.trim().toLowerCase();
+  const filtrados = proveedoresOriginal.filter((p) => p.nombre.toLowerCase().includes(valor));
+  renderizarProveedores(filtrados);
 }
 
-// --- NOTIFICACIONES ---
-function mostrarNotificacion({ titulo = "¡Aviso!", mensaje = "", tipo = "success", tiempo = 1000 }) {
-  const modalEl = document.getElementById("modalNotificacion");
-  const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-  
-  document.getElementById("notif-title").innerText = titulo;
-  document.getElementById("notif-text").innerText = mensaje;
-  
-  let iconHtml = "";
-  if (tipo === "success") iconHtml = '<i class="bi bi-check-circle" style="color:#3dc964"></i>';
-  else if (tipo === "error") iconHtml = '<i class="bi bi-x-circle" style="color:#e74c3c"></i>';
-  else if (tipo === "warning") iconHtml = '<i class="bi bi-exclamation-circle" style="color:#ffc107"></i>';
-  else iconHtml = '<i class="bi bi-info-circle" style="color:#3498db"></i>';
-  
-  document.getElementById("notif-icon").innerHTML = iconHtml;
-  modal.show();
+document.addEventListener("DOMContentLoaded", () => {
+  const formAgregar = document.getElementById("form-agregar-proveedor");
+  if (formAgregar) formAgregar.addEventListener("submit", agregarProveedor);
 
-  if (tiempo > 0) {
-    setTimeout(() => modal.hide(), tiempo);
-  }
-}
+  const formEditar = document.getElementById("form-editar-proveedor");
+  if (formEditar) formEditar.addEventListener("submit", actualizarProveedor);
+
+  const busqueda = document.getElementById("busqueda-proveedores");
+  if (busqueda) busqueda.addEventListener("input", filtrarProveedores);
+});

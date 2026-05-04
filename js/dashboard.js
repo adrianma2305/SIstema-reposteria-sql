@@ -4,7 +4,11 @@ let ventasCache = [];
 // --- FUNCIÓN PARA DESCARGAR TODAS LAS VENTAS ---
 async function actualizarCacheVentas() {
   try {
-    const res = await fetch(`${API_URL_DASH}/ventas`);
+    const res = await fetch(`${API_URL_DASH}/ventas`, {
+        headers: {
+            'ngrok-skip-browser-warning': 'true'
+        }
+    });
     if (res.ok) {
       ventasCache = await res.json();
     }
@@ -92,8 +96,8 @@ async function refrescarTotales() {
 
   const dif = totalDia - totalAyer;
   let textoDif = dif > 0 ? `C$ ${dif.toFixed(2)} más en ventas que ayer` 
-               : dif < 0 ? `C$ ${Math.abs(dif).toFixed(2)} menos en ventas que ayer` 
-               : "Igual que ayer";
+                 : dif < 0 ? `C$ ${Math.abs(dif).toFixed(2)} menos en ventas que ayer` 
+                 : "Igual que ayer";
 
   const totalSemana = calcularTotalVentasDesde(semana);
   const totalMes = calcularTotalVentasDesde(mes);

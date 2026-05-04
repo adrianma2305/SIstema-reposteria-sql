@@ -13,7 +13,11 @@ async function inicializarSistemaConLogin() {
   // Verificar sesión automática
   if (idGuardado) {
     try {
-      const res = await fetch(`${API_URL_USUARIOS}/empleados/${idGuardado}`);
+      const res = await fetch(`${API_URL_USUARIOS}/empleados/${idGuardado}`, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         usuarioActual = data;
@@ -37,7 +41,11 @@ async function inicializarSistemaConLogin() {
   select.innerHTML = "<option value='' selected disabled>Selecciona tu usuario...</option>";
 
   try {
-    const resEmp = await fetch(`${API_URL_USUARIOS}/empleados`);
+    const resEmp = await fetch(`${API_URL_USUARIOS}/empleados`, {
+        headers: {
+            'ngrok-skip-browser-warning': 'true'
+        }
+    });
     if (resEmp.ok) {
       const empleados = await resEmp.json();
       empleados.forEach(emp => {
@@ -60,7 +68,11 @@ async function inicializarSistemaConLogin() {
     if (!idUsuario) return mostrarErrorLogin("Por favor selecciona un usuario.");
 
     try {
-      const res = await fetch(`${API_URL_USUARIOS}/empleados/${idUsuario}`);
+      const res = await fetch(`${API_URL_USUARIOS}/empleados/${idUsuario}`, {
+          headers: {
+              'ngrok-skip-browser-warning': 'true'
+          }
+      });
       if (!res.ok) return mostrarErrorLogin("Error al verificar usuario.");
       
       const data = await res.json();
@@ -149,7 +161,10 @@ document.getElementById("form-agregar-usuario")?.addEventListener("submit", asyn
   try {
     const respuesta = await fetch(`${API_URL_USUARIOS}/empleados`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+      },
       body: JSON.stringify({ nombre, cargo, contraseña: hash })
     });
 

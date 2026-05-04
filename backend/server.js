@@ -6,6 +6,8 @@ const app = express();
 app.use(cors()); 
 app.use(express.json());
 
+
+
 // --- 1. CONFIGURACIÓN FORZANDO RED ---
 const dbConfig = {
     server: 'localhost', 
