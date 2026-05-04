@@ -1,5 +1,5 @@
 let usuarioActual = null;
-const API_URL_USUARIOS = "http://localhost:3000/api";
+const API_URL_USUARIOS = "https://kalel-tintometric-nonefficiently.ngrok-free.dev/api";
 
 async function inicializarSistemaConLogin() {
   const mainContent = document.querySelector(".main-content");

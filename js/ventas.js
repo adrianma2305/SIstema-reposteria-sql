@@ -1,8 +1,8 @@
-const API_URL_VENTAS = "http://localhost:3000/api";
+const API_URL_VENTAS = "https://kalel-tintometric-nonefficiently.ngrok-free.dev/api";
 let productosParaVenta = [];
 let factura = [];
 
-// --- 1. CARGAR PRODUCTOS EN LA CUADRÍCULA ---
+// 1. CARGAR PRODUCTOS EN LA CUADRÍCULA 
 async function cargarProductosParaVenta() {
   try {
     const res = await fetch(`${API_URL_VENTAS}/productos`);
@@ -33,9 +33,9 @@ function renderizarGridProductosVenta(listado) {
   });
 }
 
-// --- 2. LÓGICA DE LA FACTURA ---
+// 2. LÓGICA DE LA FACTURA 
 window.agregarAFactura = function (id) {
-  // Usamos == (doble igual) para que JavaScript acepte el ID sin importar si llega como texto o número
+  
   const prod = productosParaVenta.find((p) => p.id == id);
   
   if (!prod) {
@@ -47,7 +47,6 @@ window.agregarAFactura = function (id) {
   if (idx >= 0) {
     factura[idx].cantidad += 1;
   } else {
-    // Forzamos el parseFloat para que el precio siempre se sume como dinero y no como texto
     factura.push({ id: prod.id, nombre: prod.nombre, precio: parseFloat(prod.precio), cantidad: 1 });
   }
   
@@ -87,7 +86,6 @@ window.setCantidadFact = function (id, val) {
 };
 
 window.quitarDeFactura = function (id) {
-  // También aflojamos la regla aquí para que el botón de eliminar de la factura no falle
   factura = factura.filter((item) => item.id != id);
   renderFactTabla();
 };
@@ -99,7 +97,7 @@ document.getElementById("busqueda-venta-productos").addEventListener("input", fu
   renderizarGridProductosVenta(filtrados);
 });
 
-// --- 3. GUARDAR LA VENTA Y CREAR CLIENTE ---
+// 3. GUARDAR LA VENTA Y CREAR CLIENTE 
 async function obtenerOCrearCliente() {
   const nombreInput = document.getElementById("cliente-nombre");
   const telInput = document.getElementById("cliente-telefono");
@@ -117,7 +115,7 @@ async function obtenerOCrearCliente() {
     const encontrados = await resBusq.json();
 
     if (encontrados && encontrados.length > 0) {
-      return encontrados[0].id; // Retornamos el ID si ya existe
+      return encontrados[0].id; // Retornamos el id
     }
 
     // 2. Si no existe, lo creamos
@@ -128,7 +126,7 @@ async function obtenerOCrearCliente() {
     });
     
     const nuevo = await resCrear.json();
-    return nuevo.id; // Retornamos el ID recién creado
+    return nuevo.id; // se retorna el ID
 
   } catch (error) {
     console.error("Error procesando cliente", error);
@@ -139,7 +137,7 @@ async function obtenerOCrearCliente() {
 document.getElementById("btn-guardar-venta").onclick = async function () {
   if (factura.length === 0) return;
   
-  // Bloquear botón para no mandar 2 veces
+  
   document.getElementById("btn-guardar-venta").disabled = true;
 
   const clienteId = await obtenerOCrearCliente();
@@ -163,7 +161,6 @@ document.getElementById("btn-guardar-venta").onclick = async function () {
       });
     }
 
-    // Limpiamos todo
     factura = [];
     renderFactTabla();
     document.getElementById("cliente-nombre").value = "";
@@ -177,7 +174,7 @@ document.getElementById("btn-guardar-venta").onclick = async function () {
   }
 };
 
-// --- 4. CARGAR HISTORIAL DE VENTAS ---
+// 4. CARGAR HISTORIAL DE VENTAS 
 async function cargarVentas() {
   const tabla = document.querySelector("#ventas-table tbody");
   tabla.innerHTML = "<tr><td colspan='8'>Cargando...</td></tr>";

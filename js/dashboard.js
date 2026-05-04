@@ -1,5 +1,5 @@
-const API_URL_DASH = "http://localhost:3000/api";
-let ventasCache = []; // Guardamos las ventas aquí para no saturar al servidor
+const API_URL_DASH = "https://kalel-tintometric-nonefficiently.ngrok-free.dev/api";
+let ventasCache = []; 
 
 // --- FUNCIÓN PARA DESCARGAR TODAS LAS VENTAS ---
 async function actualizarCacheVentas() {
@@ -80,7 +80,7 @@ function obtenerTopProductosLocal(fechaInicio, limite = 5) {
 
 // --- ACTUALIZAR PANTALLA DEL DASHBOARD ---
 async function refrescarTotales() {
-  await actualizarCacheVentas(); // Refrescamos los datos frescos del servidor
+  await actualizarCacheVentas(); 
 
   const hoy = new Date();
   const ayer = getFechaAyer();

@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:3000/api";
+const API_URL = "https://kalel-tintometric-nonefficiently.ngrok-free.dev/api";
 let productosOriginal = [];
 
 // --- CARGAR PRODUCTOS ---
@@ -104,7 +104,7 @@ async function eliminarProducto(id) {
   }
 }
 
-// --- CARGAR SELECTS DE INSUMOS (SIN SUPABASE) ---
+// --- CARGAR SELECTS DE INSUMOS  ---
 async function cargarSelectsInsumosProducto() {
   try {
     const respuesta = await fetch(`${API_URL}/insumos`);
@@ -126,7 +126,7 @@ async function cargarSelectsInsumosProducto() {
   }
 }
 
-// --- ABRIR MODAL DE EDICIÓN (SIN SUPABASE) ---
+// --- ABRIR MODAL DE EDICIÓN ---
 async function abrirEditarProducto(id) {
   try {
     const respuesta = await fetch(`${API_URL}/productos/${id}`);
@@ -145,7 +145,7 @@ async function abrirEditarProducto(id) {
   }
 }
 
-// --- ACTUALIZAR PRODUCTO (SIN SUPABASE) ---
+// --- ACTUALIZAR PRODUCTO ---
 async function actualizarProducto(event) {
   event.preventDefault();
   const id = document.getElementById("edit-id").value;

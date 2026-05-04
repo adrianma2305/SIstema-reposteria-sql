@@ -1,4 +1,4 @@
-const API_URL_PROV = "http://localhost:3000/api";
+const API_URL_PROV = "https://kalel-tintometric-nonefficiently.ngrok-free.dev/api";
 let proveedoresOriginal = [];
 
 // --- CARGAR PROVEEDORES ---

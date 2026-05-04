@@ -1,4 +1,4 @@
-const API_URL_INS = "http://localhost:3000/api";
+const API_URL_INS = "https://kalel-tintometric-nonefficiently.ngrok-free.dev/api";
 let insumosOriginal = [];
 let proveedoresMap = {}; 
 

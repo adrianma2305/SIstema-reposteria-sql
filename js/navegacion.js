@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // --- 1. CAPTURAR BOTONES Y SECCIONES ---
+  //  1. CAPTURAR BOTONES Y SECCIONES 
   const botonesNav = {
     inicio: document.getElementById("btn-ir-inicio"),
     ventas: document.getElementById("btn-ir-ventas"),

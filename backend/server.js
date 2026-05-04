@@ -8,25 +8,25 @@ app.use(express.json());
 
 // --- 1. CONFIGURACIÓN FORZANDO RED ---
 const dbConfig = {
-    server: 'localhost', // Volvemos a localhost ahora que la red está abierta
-    port: 1433,          // <-- ¡Forzamos a que use el puerto oficial de SQL Server!
+    server: 'localhost', 
+    port: 1433,          
     database: 'PasteleriaDB',
     driver: 'SQL Server', 
     options: {
         trustedConnection: true,
         trustServerCertificate: true,
-        connectTimeout: 5000 // Si en 5 segundos no conecta, que tire error y no se quede pegado
+        connectTimeout: 5000 
     }
 };
 
 // --- 1.5 LA MAGIA ---
-console.log("⏳ Intentando conectar a la base de datos..."); // Para saber que sí está intentando
+console.log("⏳ Intentando conectar a la base de datos..."); 
 
 const poolPromise = sql.connect(dbConfig).then(pool => {
     console.log("✅ ¡Conectado a SQL Server al cien con Windows!");
     return pool;
 }).catch(err => {
-    console.log("❌ Error al conectar BD: ", err.message); // Ahora sí nos dirá qué le duele
+    console.log("❌ Error al conectar BD: ", err.message);
 });
 
 // --- 2. RUTAS DE EMPLEADOS ---
@@ -129,9 +129,9 @@ app.put('/api/productos/:id', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
-// ==========================================
+//
 // --- 5. RUTAS DE PROVEEDORES ---
-// ==========================================
+// 
 app.get('/api/proveedores', async (req, res) => {
     try {
         let pool = await poolPromise;
@@ -187,13 +187,13 @@ app.delete('/api/proveedores/:id', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
-// ==========================================
+//
 // --- 6. RUTAS DE INSUMOS ---
-// ==========================================
+// 
 app.get('/api/insumos', async (req, res) => {
     try {
         let pool = await poolPromise;
-        // Hacemos un JOIN para que el frontend reciba el nombre del proveedor igual que antes
+       
         let result = await pool.request().query(`
             SELECT i.*, p.nombre as nombre_proveedor 
             FROM insumos i 
@@ -263,15 +263,15 @@ app.delete('/api/insumos/:id', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
-// ==========================================
+// 
 // --- 7. RUTAS DE CLIENTES ---
-// ==========================================
+//
 app.get('/api/clientes', async (req, res) => {
     try {
         let pool = await poolPromise;
         let nombre = req.query.nombre;
         
-        // Si el frontend pregunta por un nombre en específico para ver si existe
+        
         if(nombre) {
             let result = await pool.request()
                 .input('nombre', sql.VarChar, `%${nombre}%`)
@@ -288,7 +288,7 @@ app.post('/api/clientes', async (req, res) => {
     try {
         const { nombre, telefono } = req.body;
         let pool = await poolPromise;
-        // El OUTPUT INSERTED.id nos devuelve el ID que SQL le acaba de asignar al cliente
+        //nos devuelve el ID que se acaba de asignar
         let result = await pool.request()
             .input('nombre', sql.VarChar, nombre)
             .input('telefono', sql.VarChar, telefono || null)
@@ -298,13 +298,13 @@ app.post('/api/clientes', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
-// ==========================================
+// 
 // --- 8. RUTAS DE VENTAS ---
-// ==========================================
+// 
 app.get('/api/ventas', async (req, res) => {
     try {
         let pool = await poolPromise;
-        // Un mega JOIN para traer los nombres en vez de solo los números de ID
+        //JOIN para traer los nombres en vez de solo los números de ID
         let result = await pool.request().query(`
             SELECT v.*, 
                    p.nombre as nombre_producto,
@@ -317,7 +317,7 @@ app.get('/api/ventas', async (req, res) => {
             ORDER BY v.fecha DESC
         `);
         
-        // Lo empaquetamos igualito a como lo esperaba tu código original
+        
         const ventasFormateadas = result.recordset.map(v => ({
             id: v.id,
             cantidad: v.cantidad,
@@ -344,7 +344,7 @@ app.post('/api/ventas', async (req, res) => {
             .input('total', sql.Decimal(10,2), total)
             .input('cliente_id', sql.Int, cliente_id || null)
             .input('empleado_id', sql.Int, empleado_id || null)
-            // No metemos la fecha porque SQL Server la pone solito con GETDATE()
+            
             .query('INSERT INTO ventas (producto_id, cantidad, precio_unitario, total, cliente_id, empleado_id) VALUES (@producto_id, @cantidad, @precio_unitario, @total, @cliente_id, @empleado_id)');
         res.status(201).send('Venta registrada');
     } catch (err) { res.status(500).send(err.message); }
