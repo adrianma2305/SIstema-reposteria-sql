@@ -74,7 +74,6 @@ app.put('/api/empleados/:id', async (req, res) => {
 // --- CREAR NUEVO EMPLEADO (USUARIO) ---
 app.post('/api/empleados', async (req, res) => {
     try {
-        // Recibimos los datos desde tu usuarios.js
         const { nombre, cargo, contraseña } = req.body;
 
         if (!nombre || !cargo || !contraseña) {
@@ -86,7 +85,6 @@ app.post('/api/empleados', async (req, res) => {
             .input('nombre', sql.VarChar, nombre)
             .input('cargo', sql.VarChar, cargo)
             .input('pass', sql.VarChar, contraseña)
-            // Asumimos que el nuevo usuario entra "activo" (1)
             .query('INSERT INTO Empleados (nombre, cargo, contraseña, activo) VALUES (@nombre, @cargo, @pass, 1)');
 
         res.status(201).json({ success: true, message: "Empleado creado exitosamente" });
@@ -95,7 +93,52 @@ app.post('/api/empleados', async (req, res) => {
         res.status(500).send(err.message);
     }
 });
-// --- 3. RUTAS DE CATEGORIAS ---
+
+// --- 3. OBTENER EL RESUMEN DE VENTAS ---
+app.get('/api/ventas', async (req, res) => {
+    try {
+        let pool = await poolPromise;
+        let result = await pool.request().query(`
+            SELECT v.id, v.fecha, v.total, 
+                   ISNULL(c.nombre, 'Consumidor Final') as cliente, 
+                   ISNULL(e.nombre, 'Admin/Sistema') as empleado
+            FROM Ventas v
+            LEFT JOIN Clientes c ON v.cliente_id = c.id
+            LEFT JOIN Empleados e ON v.empleado_id = e.id
+            ORDER BY v.fecha DESC
+        `);
+        res.json(result.recordset);
+    } catch (err) { res.status(500).send(err.message); }
+});
+
+// --- 4. OBTENER EL DETALLE DE UNA VENTA PARA EL RECIBO ---
+// --- 4. OBTENER EL DETALLE DE UNA VENTA PARA EL RECIBO ---
+app.get('/api/ventas/:id/detalles', async (req, res) => {
+    try {
+        console.log("--> 🟢 Buscando detalles para la factura número:", req.params.id);
+        
+        let pool = await poolPromise;
+        let result = await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query(`
+                SELECT dv.cantidad, p.nombre, dv.subtotal
+                FROM [Ventas_Detalle] dv
+                INNER JOIN [productos] p ON dv.producto_id = p.id
+                WHERE dv.venta_id = @id
+            `);
+            
+        console.log("--> ✅ Productos encontrados:", result.recordset.length);
+        res.json(result.recordset);
+    } catch (err) { 
+        console.log("\n=========================================");
+        console.error("🚨 ERROR FATAL EN LA BASE DE DATOS 🚨");
+        console.error("MOTIVO EXACTO:", err.message);
+        console.log("=========================================\n");
+        res.status(500).send(err.message); 
+    }
+});
+
+// --- 5. RUTAS DE CATEGORIAS ---
 app.get('/api/categorias', async (req, res) => {
     try {
         let pool = await poolPromise;
@@ -104,7 +147,7 @@ app.get('/api/categorias', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
-// --- 4. RUTAS DE PRODUCTOS ---
+// --- 6. RUTAS DE PRODUCTOS ---
 app.get('/api/productos', async (req, res) => {
     try {
         let pool = await poolPromise;
@@ -184,7 +227,7 @@ app.delete('/api/productos/:id', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
-// --- 5. RUTAS DE PROVEEDORES ---
+// --- 7. RUTAS DE PROVEEDORES ---
 app.get('/api/proveedores', async (req, res) => {
     try {
         let pool = await poolPromise;
@@ -240,7 +283,7 @@ app.delete('/api/proveedores/:id', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
-// --- 6. RUTAS DE INSUMOS ---
+// --- 8. RUTAS DE INSUMOS ---
 app.get('/api/insumos', async (req, res) => {
     try {
         let pool = await poolPromise;
@@ -314,7 +357,7 @@ app.delete('/api/insumos/:id', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
-// --- 7. RUTAS DE CLIENTES ---
+// --- 9. RUTAS DE CLIENTES ---
 app.get('/api/clientes', async (req, res) => {
     try {
         let pool = await poolPromise;
@@ -345,44 +388,7 @@ app.post('/api/clientes', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
-// --- 8. RUTAS DE VENTAS (MAESTRO-DETALLE) ---
-app.get('/api/ventas', async (req, res) => {
-    try {
-        let pool = await poolPromise;
-        let result = await pool.request().query(`
-            SELECT 
-                v.id as factura_id,
-                v.fecha,
-                c.nombre as nombre_cliente,
-                e.nombre as nombre_empleado,
-                vd.cantidad,
-                vd.precio_unitario,
-                vd.subtotal as total_producto,
-                p.nombre as nombre_producto
-            FROM Ventas v
-            INNER JOIN Ventas_Detalle vd ON v.id = vd.venta_id
-            LEFT JOIN Productos p ON vd.producto_id = p.id
-            LEFT JOIN Clientes c ON v.cliente_id = c.id
-            LEFT JOIN Empleados e ON v.empleado_id = e.id
-            WHERE v.activo = 1
-            ORDER BY v.fecha DESC, v.id DESC
-        `);
-        
-        const ventasFormateadas = result.recordset.map(v => ({
-            id: v.factura_id, 
-            cantidad: v.cantidad,
-            precio_unitario: v.precio_unitario,
-            total: v.total_producto,
-            fecha: v.fecha,
-            producto: v.nombre_producto ? { nombre: v.nombre_producto } : null,
-            cliente: v.nombre_cliente ? { nombre: v.nombre_cliente } : null,
-            empleado: v.nombre_empleado ? { nombre: v.nombre_empleado } : null
-        }));
-
-        res.json(ventasFormateadas);
-    } catch (err) { res.status(500).send(err.message); }
-});
-
+// --- 10. RUTAS DE VENTAS ---
 app.post('/api/ventas', async (req, res) => {
     let transaction;
     try {
@@ -421,15 +427,12 @@ app.post('/api/ventas', async (req, res) => {
     }
 });
 
-// --- 9. RUTAS DEL DASHBOARD (NUEVO) ---
+// --- 11. RUTAS DEL DASHBOARD ---
 app.get('/api/dashboard/resumen', async (req, res) => {
     try {
         let pool = await poolPromise;
-        // Ventas del día (ignora la hora, solo compara el día)
         let qDia = await pool.request().query(`SELECT ISNULL(SUM(total), 0) as total FROM Ventas WHERE CAST(fecha as DATE) = CAST(GETDATE() as DATE) AND activo = 1`);
-        // Ventas de los últimos 7 días
         let qSemana = await pool.request().query(`SELECT ISNULL(SUM(total), 0) as total FROM Ventas WHERE fecha >= DATEADD(day, -7, GETDATE()) AND activo = 1`);
-        // Ventas del mes actual
         let qMes = await pool.request().query(`SELECT ISNULL(SUM(total), 0) as total FROM Ventas WHERE MONTH(fecha) = MONTH(GETDATE()) AND YEAR(fecha) = YEAR(GETDATE()) AND activo = 1`);
 
         res.json({
@@ -459,7 +462,6 @@ app.get('/api/dashboard/top-productos', async (req, res) => {
 app.get('/api/dashboard/ventas-mes', async (req, res) => {
     try {
         let pool = await poolPromise;
-        // Suma las ventas día por día para el gráfico de líneas
         let result = await pool.request().query(`
             SELECT FORMAT(fecha, 'dd-MM') as dia, SUM(total) as total_dia 
             FROM Ventas 
@@ -471,7 +473,7 @@ app.get('/api/dashboard/ventas-mes', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
-// --- 10. INICIAR SERVIDOR ---
+// --- 12. INICIAR SERVIDOR ---
 app.listen(3000, () => {
     console.log('Servidor corriendo en el puerto 3000');
 });

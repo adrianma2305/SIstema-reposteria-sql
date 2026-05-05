@@ -61,7 +61,7 @@ function renderFactTabla() {
       <tr>
         <td>${item.nombre}</td>
         <td>
-          <input type="number" min="1" value="${item.cantidad}" onchange="setCantidadFact(${item.id},this.value)">
+          <input type="number" min="1" style="width: 50px;" value="${item.cantidad}" onchange="setCantidadFact(${item.id},this.value)">
           <button class="btn btn-link btn-sm p-0 ms-2" onclick="quitarDeFactura(${item.id})"><i class="bi bi-x-lg text-danger"></i></button>
         </td>
         <td>C$ ${subtotal.toFixed(2)}</td>
@@ -165,7 +165,7 @@ document.getElementById("btn-guardar-venta").onclick = async function () {
     document.getElementById("cliente-telefono").value = "";
 
     cargarVentas();
-    mostrarNotificacion({ titulo: "Venta registrada", mensaje: "Venta guardada en la base de datos.", tipo: "success" });
+    mostrarNotificacion({ titulo: "Venta registrada", mensaje: "Venta guardada exitosamente.", tipo: "success" });
   } catch (error) {
     console.error(error);
     mostrarNotificacion({ titulo: "Error", mensaje: "No se pudo registrar la venta.", tipo: "error" });
@@ -173,38 +173,105 @@ document.getElementById("btn-guardar-venta").onclick = async function () {
   }
 };
 
-// 4. CARGAR HISTORIAL DE VENTAS 
+// 4. CARGAR HISTORIAL DE VENTAS (NUEVA VISTA RESUMIDA)
 async function cargarVentas() {
   const tabla = document.querySelector("#ventas-table tbody");
-  tabla.innerHTML = "<tr><td colspan='8'>Cargando...</td></tr>";
+  tabla.innerHTML = "<tr><td colspan='6' class='text-center'>Cargando historial...</td></tr>";
 
   try {
-    const res = await fetch(`${API_URL_VENTAS}/ventas`, {
-        headers: { 'ngrok-skip-browser-warning': 'true' }
-    });
+    const res = await fetch(`${API_URL_VENTAS}/ventas`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
     if (!res.ok) throw new Error("Error de red");
     const ventas = await res.json();
 
     tabla.innerHTML = "";
     ventas.forEach((v) => {
       const fechaStr = v.fecha ? new Date(v.fecha).toLocaleString() : "";
+      
       tabla.insertAdjacentHTML("beforeend", `
         <tr>
-          <td>${v.id}</td>
-          <td>${v.producto?.nombre || "Producto eliminado"}</td>
-          <td>${v.cantidad}</td>
-          <td>${v.precio_unitario !== null ? v.precio_unitario.toFixed(2) : ""}</td>
-          <td>${v.total !== null ? v.total.toFixed(2) : ""}</td>
+          <td class="fw-bold text-primary">#${v.id}</td>
           <td>${fechaStr}</td>
-          <td>${v.cliente?.nombre || ""}</td>
-          <td>${v.empleado?.nombre || ""}</td>
+          <td><i class="bi bi-person me-1"></i> ${v.cliente}</td>
+          <td><small class="text-muted">${v.empleado}</small></td>
+          <td class="fw-bold text-success">C$ ${v.total.toFixed(2)}</td>
+          <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary" onclick="abrirRecibo(${v.id}, '${fechaStr}', '${v.cliente}', '${v.empleado}', ${v.total})">
+              <i class="bi bi-receipt"></i> Ver Ticket
+            </button>
+          </td>
         </tr>
       `);
     });
   } catch (error) {
-    tabla.innerHTML = `<tr><td colspan='8'>Error al cargar las ventas.</td></tr>`;
+    tabla.innerHTML = `<tr><td colspan='6' class='text-center text-danger'>Error al cargar las ventas.</td></tr>`;
     console.error(error);
   }
+}
+
+// 5. ABRIR EL MODAL DEL RECIBO Y LLENAR LOS DETALLES
+window.abrirRecibo = async function(id, fecha, cliente, empleado, total) {
+  // Llenar el encabezado del recibo
+  document.getElementById("recibo-id").innerText = id;
+  document.getElementById("recibo-fecha").innerText = fecha;
+  document.getElementById("recibo-cliente").innerText = cliente;
+  document.getElementById("recibo-empleado").innerText = empleado;
+  document.getElementById("recibo-total").innerText = "C$ " + parseFloat(total).toFixed(2);
+
+  const tbody = document.getElementById("recibo-detalles");
+  tbody.innerHTML = "<tr><td colspan='3' class='text-center'>Cargando detalles...</td></tr>";
+
+  // Mostrar el modal
+  const modal = new bootstrap.Modal(document.getElementById("modalRecibo"));
+  modal.show();
+
+  // Buscar los productos de esta venta en el backend
+  try {
+    const res = await fetch(`${API_URL_VENTAS}/ventas/${id}/detalles`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
+    if (!res.ok) throw new Error("Error al cargar detalles");
+    const detalles = await res.json();
+
+    tbody.innerHTML = "";
+    detalles.forEach(d => {
+      tbody.insertAdjacentHTML("beforeend", `
+        <tr>
+          <td class="text-start">${d.cantidad}</td>
+          <td class="text-start">${d.nombre}</td>
+          <td class="text-end">C$ ${d.subtotal.toFixed(2)}</td>
+        </tr>
+      `);
+    });
+  } catch (error) {
+    tbody.innerHTML = "<tr><td colspan='3' class='text-center text-danger'>No se pudieron cargar los productos</td></tr>";
+  }
+}
+
+// 6. IMPRIMIR EL RECIBO
+window.imprimirRecibo = function() {
+  const contenido = document.getElementById("area-imprimir-recibo").innerHTML;
+  const ventanaImpresion = window.open('', '', 'height=600,width=400');
+  
+  ventanaImpresion.document.write('<html><head><title>Ticket de Venta</title>');
+  ventanaImpresion.document.write(`
+    <style>
+      body { font-family: 'Courier New', Courier, monospace; font-size: 14px; padding: 10px; color: black; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+      th, td { text-align: left; padding: 2px 0; }
+      .text-end { text-align: right; }
+      .text-center { text-align: center; }
+      .fw-bold { font-weight: bold; }
+    </style>
+  `);
+  ventanaImpresion.document.write('</head><body>');
+  ventanaImpresion.document.write(contenido);
+  ventanaImpresion.document.write('</body></html>');
+  
+  ventanaImpresion.document.close();
+  ventanaImpresion.focus();
+  
+  setTimeout(() => {
+    ventanaImpresion.print();
+    ventanaImpresion.close();
+  }, 250);
 }
 
 async function iniciarPOSVenta() {
@@ -213,7 +280,7 @@ async function iniciarPOSVenta() {
   renderFactTabla();
 }
 
-function mostrarNotificacion({ titulo = "¡Aviso!", mensaje = "", tipo = "success", tiempo = 1000 }) {
+function mostrarNotificacion({ titulo = "¡Aviso!", mensaje = "", tipo = "success", tiempo = 1500 }) {
   const modalEl = document.getElementById("modalNotificacion");
   const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
   
