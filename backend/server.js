@@ -118,7 +118,6 @@ app.put('/api/productos/:id', async (req, res) => {
             .input('precio', sql.Decimal(10,2), precio)
             .input('insumo_id', sql.Int, insumo_id || null)
             .input('categoria_id', sql.Int, categoria_id || null)
-            // AUDITORIA: Agregamos fecha_actualizacion = GETDATE()
             .query('UPDATE productos SET nombre = @nombre, precio = @precio, insumo_id = @insumo_id, categoria_id = @categoria_id, fecha_actualizacion = GETDATE() WHERE id = @id');
         res.status(200).send('Producto actualizado');
     } catch (err) { res.status(500).send(err.message); }
@@ -132,9 +131,7 @@ app.delete('/api/productos/:id', async (req, res) => {
             .input('id', sql.Int, id)
             .query('UPDATE productos SET activo = 0 WHERE id = @id');
         res.status(200).send('Producto eliminado lógicamente');
-    } catch (err) { 
-        res.status(500).send(err.message); 
-    }
+    } catch (err) { res.status(500).send(err.message); }
 });
 
 // --- 5. RUTAS DE PROVEEDORES ---
@@ -179,7 +176,6 @@ app.put('/api/proveedores/:id', async (req, res) => {
             .input('nombre', sql.VarChar, nombre)
             .input('telefono', sql.VarChar, telefono || null)
             .input('entrega', sql.Date, entrega || null)
-            // AUDITORIA: Agregamos fecha_actualizacion = GETDATE()
             .query('UPDATE proveedores SET nombre = @nombre, telefono = @telefono, entrega = @entrega, fecha_actualizacion = GETDATE() WHERE id = @id');
         res.status(200).send('Proveedor actualizado');
     } catch (err) { res.status(500).send(err.message); }
@@ -254,7 +250,6 @@ app.put('/api/insumos/:id', async (req, res) => {
             .input('unidad', sql.VarChar, unidad || null)
             .input('precio', sql.Decimal(10,2), precio || null)
             .input('proveedor_id', sql.Int, proveedor_id || null)
-            // AUDITORIA: Agregamos fecha_actualizacion = GETDATE()
             .query('UPDATE insumos SET nombre = @nombre, unidad = @unidad, precio = @precio, proveedor_id = @proveedor_id, fecha_actualizacion = GETDATE() WHERE id = @id');
         res.status(200).send('Insumo actualizado');
     } catch (err) { res.status(500).send(err.message); }
@@ -300,27 +295,35 @@ app.post('/api/clientes', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
-// --- 8. RUTAS DE VENTAS ---
+// --- 8. RUTAS DE VENTAS (NUEVO MODELO MAESTRO-DETALLE) ---
 app.get('/api/ventas', async (req, res) => {
     try {
         let pool = await poolPromise;
+        // Unimos Cabecera y Detalle para que tu tabla del frontend siga funcionando igual
         let result = await pool.request().query(`
-            SELECT v.*, 
-                   p.nombre as nombre_producto,
-                   c.nombre as nombre_cliente,
-                   e.nombre as nombre_empleado
-            FROM ventas v
-            LEFT JOIN productos p ON v.producto_id = p.id
-            LEFT JOIN clientes c ON v.cliente_id = c.id
-            LEFT JOIN empleados e ON v.empleado_id = e.id
-            ORDER BY v.fecha DESC
+            SELECT 
+                v.id as factura_id,
+                v.fecha,
+                c.nombre as nombre_cliente,
+                e.nombre as nombre_empleado,
+                vd.cantidad,
+                vd.precio_unitario,
+                vd.subtotal as total_producto,
+                p.nombre as nombre_producto
+            FROM Ventas v
+            INNER JOIN Ventas_Detalle vd ON v.id = vd.venta_id
+            LEFT JOIN Productos p ON vd.producto_id = p.id
+            LEFT JOIN Clientes c ON v.cliente_id = c.id
+            LEFT JOIN Empleados e ON v.empleado_id = e.id
+            WHERE v.activo = 1
+            ORDER BY v.fecha DESC, v.id DESC
         `);
         
         const ventasFormateadas = result.recordset.map(v => ({
-            id: v.id,
+            id: v.factura_id, 
             cantidad: v.cantidad,
             precio_unitario: v.precio_unitario,
-            total: v.total,
+            total: v.total_producto,
             fecha: v.fecha,
             producto: v.nombre_producto ? { nombre: v.nombre_producto } : null,
             cliente: v.nombre_cliente ? { nombre: v.nombre_cliente } : null,
@@ -332,19 +335,45 @@ app.get('/api/ventas', async (req, res) => {
 });
 
 app.post('/api/ventas', async (req, res) => {
+    let transaction;
     try {
-        const { producto_id, cantidad, precio_unitario, total, cliente_id, empleado_id } = req.body;
+        const { cliente_id, empleado_id, total, detalles } = req.body;
+        
         let pool = await poolPromise;
-        await pool.request()
-            .input('producto_id', sql.Int, producto_id)
-            .input('cantidad', sql.Int, cantidad)
-            .input('precio_unitario', sql.Decimal(10,2), precio_unitario)
-            .input('total', sql.Decimal(10,2), total)
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        // 1. Insertar la Cabecera (Ventas)
+        const requestCabecera = new sql.Request(transaction);
+        let resultCabecera = await requestCabecera
             .input('cliente_id', sql.Int, cliente_id || null)
             .input('empleado_id', sql.Int, empleado_id || null)
-            .query('INSERT INTO ventas (producto_id, cantidad, precio_unitario, total, cliente_id, empleado_id) VALUES (@producto_id, @cantidad, @precio_unitario, @total, @cliente_id, @empleado_id)');
-        res.status(201).send('Venta registrada');
-    } catch (err) { res.status(500).send(err.message); }
+            .input('total', sql.Decimal(10,2), total)
+            .query('INSERT INTO Ventas (cliente_id, empleado_id, total) OUTPUT INSERTED.id VALUES (@cliente_id, @empleado_id, @total)');
+        
+        const nuevaVentaId = resultCabecera.recordset[0].id;
+
+        // 2. Insertar los Detalles (Ventas_Detalle)
+        for (let item of detalles) {
+            const requestDetalle = new sql.Request(transaction);
+            await requestDetalle
+                .input('venta_id', sql.Int, nuevaVentaId)
+                .input('producto_id', sql.Int, item.producto_id)
+                .input('cantidad', sql.Int, item.cantidad)
+                .input('precio_unitario', sql.Decimal(10,2), item.precio_unitario)
+                .input('subtotal', sql.Decimal(10,2), item.subtotal)
+                .query('INSERT INTO Ventas_Detalle (venta_id, producto_id, cantidad, precio_unitario, subtotal) VALUES (@venta_id, @producto_id, @cantidad, @precio_unitario, @subtotal)');
+        }
+
+        // Si todo sale perfecto, hacemos COMMIT (guardar cambios)
+        await transaction.commit();
+        res.status(201).json({ message: 'Venta registrada con éxito', id: nuevaVentaId });
+        
+    } catch (err) { 
+        // Si hay CUALQUIER error, hacemos ROLLBACK (cancelar todo)
+        if (transaction) await transaction.rollback();
+        res.status(500).send(err.message); 
+    }
 });
 
 // --- 9. INICIAR SERVIDOR ---

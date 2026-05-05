@@ -5,11 +5,7 @@ let factura = [];
 // 1. CARGAR PRODUCTOS EN LA CUADRÍCULA 
 async function cargarProductosParaVenta() {
   try {
-    const res = await fetch(`${API_URL_VENTAS}/productos`, {
-        headers: {
-            'ngrok-skip-browser-warning': 'true'
-        }
-    });
+    const res = await fetch(`${API_URL_VENTAS}/productos`);
     if (!res.ok) throw new Error("Error al cargar productos");
     const productos = await res.json();
     
@@ -114,30 +110,21 @@ async function obtenerOCrearCliente() {
   if (!nombre) return null;
 
   try {
-    // 1. Buscar si el cliente ya existe
-    const resBusq = await fetch(`${API_URL_VENTAS}/clientes?nombre=${encodeURIComponent(nombre)}`, {
-        headers: {
-            'ngrok-skip-browser-warning': 'true'
-        }
-    });
+    const resBusq = await fetch(`${API_URL_VENTAS}/clientes?nombre=${encodeURIComponent(nombre)}`);
     const encontrados = await resBusq.json();
 
     if (encontrados && encontrados.length > 0) {
-      return encontrados[0].id; // Retornamos el id
+      return encontrados[0].id; 
     }
 
-    // 2. Si no existe, lo creamos
     const resCrear = await fetch(`${API_URL_VENTAS}/clientes`, {
       method: 'POST',
-      headers: { 
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nombre, telefono })
     });
     
     const nuevo = await resCrear.json();
-    return nuevo.id; // se retorna el ID
+    return nuevo.id; 
 
   } catch (error) {
     console.error("Error procesando cliente", error);
@@ -148,32 +135,37 @@ async function obtenerOCrearCliente() {
 document.getElementById("btn-guardar-venta").onclick = async function () {
   if (factura.length === 0) return;
   
-  
   document.getElementById("btn-guardar-venta").disabled = true;
 
   const clienteId = await obtenerOCrearCliente();
   const empleadoIdStr = localStorage.getItem("usuario_id");
   const empleadoId = empleadoIdStr ? parseInt(empleadoIdStr) : null;
 
+  // Calculamos el total de la factura
+  const totalFactura = factura.reduce((acc, item) => acc + (item.cantidad * item.precio), 0);
+
+  // Preparamos el array de detalles para enviarlo de un solo golpe
+  const detallesVenta = factura.map(item => ({
+      producto_id: item.id,
+      cantidad: item.cantidad,
+      precio_unitario: item.precio,
+      subtotal: item.cantidad * item.precio
+  }));
+
   try {
-    // Guardamos cada producto de la factura como un registro de venta
-    for (let item of factura) {
-      await fetch(`${API_URL_VENTAS}/ventas`, {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': 'true'
-        },
-        body: JSON.stringify({
-          producto_id: item.id,
-          cantidad: item.cantidad,
-          precio_unitario: item.precio,
-          total: item.cantidad * item.precio,
+    // Mandamos el paquete completo al nuevo backend
+    const res = await fetch(`${API_URL_VENTAS}/ventas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
           cliente_id: clienteId,
-          empleado_id: empleadoId
-        })
-      });
-    }
+          empleado_id: empleadoId,
+          total: totalFactura,
+          detalles: detallesVenta
+      })
+    });
+
+    if (!res.ok) throw new Error("No se pudo registrar la venta");
 
     factura = [];
     renderFactTabla();
@@ -181,8 +173,9 @@ document.getElementById("btn-guardar-venta").onclick = async function () {
     document.getElementById("cliente-telefono").value = "";
 
     cargarVentas();
-    mostrarNotificacion({ titulo: "Venta registrada", mensaje: "Venta registrada correctamente.", tipo: "success" });
+    mostrarNotificacion({ titulo: "Venta registrada", mensaje: "Venta guardada en la base de datos.", tipo: "success" });
   } catch (error) {
+    console.error(error);
     mostrarNotificacion({ titulo: "Error", mensaje: "No se pudo registrar la venta.", tipo: "error" });
     document.getElementById("btn-guardar-venta").disabled = false;
   }
@@ -194,11 +187,7 @@ async function cargarVentas() {
   tabla.innerHTML = "<tr><td colspan='8'>Cargando...</td></tr>";
 
   try {
-    const res = await fetch(`${API_URL_VENTAS}/ventas`, {
-        headers: {
-            'ngrok-skip-browser-warning': 'true'
-        }
-    });
+    const res = await fetch(`${API_URL_VENTAS}/ventas`);
     if (!res.ok) throw new Error("Error de red");
     const ventas = await res.json();
 
