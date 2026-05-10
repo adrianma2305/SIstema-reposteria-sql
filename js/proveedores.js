@@ -1,4 +1,4 @@
-const API_URL_PROV = "https://kalel-tintometric-nonefficiently.ngrok-free.dev/api";
+const API_URL_PROV = "https://sistema-pasteleria-sql.onrender.com";
 let proveedoresOriginal = [];
 
 async function cargarProveedores() {

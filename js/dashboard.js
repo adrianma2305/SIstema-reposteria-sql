@@ -1,4 +1,4 @@
-const API_URL_DASH = "https://kalel-tintometric-nonefficiently.ngrok-free.dev/api";
+const API_URL_DASH = "https://sistema-pasteleria-sql.onrender.com";
 let ventasCache = []; 
 
 // --- CARGAR DATOS PARA REPORTES AVANZADOS ---

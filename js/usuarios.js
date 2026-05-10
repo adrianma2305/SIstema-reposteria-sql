@@ -1,5 +1,5 @@
 let usuarioActual = null;
-const API_URL_USUARIOS = "https://kalel-tintometric-nonefficiently.ngrok-free.dev/api";
+const API_URL_USUARIOS = "https://sistema-pasteleria-sql.onrender.com";
 let listaEmpleadosAdmin = []; // Para el buscador
 
 async function inicializarSistemaConLogin() {

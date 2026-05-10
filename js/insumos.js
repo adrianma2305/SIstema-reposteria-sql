@@ -1,4 +1,4 @@
-const API_URL_INS = "https://kalel-tintometric-nonefficiently.ngrok-free.dev/api";
+const API_URL_INS = "https://sistema-pasteleria-sql.onrender.com";
 let insumosOriginal = [];
 let proveedoresMap = {}; 
 
