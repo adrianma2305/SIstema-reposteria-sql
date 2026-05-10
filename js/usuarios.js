@@ -23,7 +23,6 @@ async function inicializarSistemaConLogin() {
         if (mainContent) mainContent.style.display = "block";
         if (sidebar) sidebar.style.display = "block";
         
-        // ¡SOLUCIÓN AL BUG! Dispara la carga del dashboard automáticamente
         document.getElementById("btn-ir-inicio")?.click(); 
         return; 
       } else {
