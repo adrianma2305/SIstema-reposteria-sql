@@ -26,7 +26,6 @@
   </head>
 
   <body>
-    <!--HEADER-->
     <header
       class="dashboard-header d-flex align-items-center justify-content-between p-2 px-4"
       style="background: var(--color3, #ff69b7); color: white; height: 58px"
@@ -52,7 +51,6 @@
       </button>
     </header>
 
-    <!-- SIDEBAR -->
     <nav class="sidebar">
       <div class="sidebar-header"><h3>VENTAS</h3></div>
       <hr />
@@ -65,7 +63,6 @@
       </ul>
     </nav>
     <main class="main-content">
-      <!--dashboard-->
       <section id="seccion-dashboard">
         <h2 class="mb-4 ">Dashboard de ventas</h2>
         <div class="row mb-4">
@@ -94,7 +91,6 @@
           </div>
         </div>
 
-        <!--accciones rapidas-->
         <h4 class="mb-3">Acciones Rápidas</h4>
         
         <div class="row mb-4 ">
@@ -180,7 +176,6 @@
           </div>
       </section>
 
-      <!-- Seccion productos -->
       <section id="seccion-productos" style="display: none">
         <h2 class="mb-4">Lista de productos</h2>
         <div class="row mb-3 align-items-center">
@@ -233,11 +228,9 @@
         </div>
       </section>
 
-      <!-- Sección ventas -->
       <section id="seccion-ventas" style="display: none">
         <h2 class="mb-4">Realizar una venta</h2>
         <div class="row">
-          <!-- Productos en cuadrícula -->
           <div class="col-md-8">
             <div class="card mb-3 shadow-sm border-0">
               <div class="card-body p-3 ">
@@ -256,7 +249,6 @@
               </div>
             </div>
           </div>
-          <!-- Factura -->
           <div class="col-md-4">
             <div class="card mb-3 shadow-sm border-0">
               <div class="card-body p-2 ">
@@ -311,7 +303,6 @@
           </div>
         </div>
         
-        <!-- NUEVA TABLA RESUMIDA DE VENTAS -->
         <h4 class="mb-3 mt-4">Historial de Ventas</h4>
         <div class="card shadow-sm border-0">
           <div class="card-body p-0 tabla-scroll">
@@ -332,7 +323,6 @@
         </div>
       </section>
 
-      <!-- Sección proveedores e insumos -->
       <section id="seccion-proveedores" style="display: none">
         <h2 class="mb-4">Lista de proveedores</h2>
         <div class="row mb-3 align-items-center">
@@ -408,7 +398,6 @@
         </div>
       </section>
 
-      <!-- NUEVA SECCIÓN: Gestión de Usuarios (Solo Admin) -->
       <section id="seccion-usuarios" style="display: none">
         <h2 class="mb-4">Gestión de Usuarios del Sistema</h2>
         <div class="row mb-3 align-items-center">
@@ -440,9 +429,6 @@
       </section>
     </main>
 
-    <!-- Todos los Modales de Agregar y Editar -->
-    
-    <!-- Modal Agregar Insumo -->
     <div class="modal fade" id="modalAgregarInsumo" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg">
@@ -477,7 +463,6 @@
       </div>
     </div>
 
-    <!-- Modal Editar Insumo -->
     <div class="modal fade" id="modalEditarInsumo" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg">
@@ -513,7 +498,6 @@
       </div>
     </div>
 
-    <!-- Modal Agregar Proveedor -->
     <div class="modal fade" id="modalAgregarProveedor" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg">
@@ -544,7 +528,6 @@
       </div>
     </div>
 
-    <!-- Modal Editar Proveedor -->
     <div class="modal fade" id="modalEditarProveedor" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg">
@@ -576,7 +559,6 @@
       </div>
     </div>
 
-    <!-- Modal Agregar Producto -->
     <div class="modal fade" id="modalAgregar" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg">
@@ -615,7 +597,6 @@
       </div>
     </div>
 
-    <!-- Modal Editar Producto -->
     <div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg">
@@ -655,11 +636,9 @@
       </div>
     </div>
 
-    <!-- EL MODAL DEL TICKET DE COMPRA -->
     <div class="modal fade" id="modalRecibo" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow">
-          <!-- Área imprimible del recibo -->
           <div class="modal-body p-4" id="area-imprimir-recibo" style="font-family: 'Courier New', Courier, monospace; color: #000; background: #fff;">
             <div class="text-center mb-3">
               <h4 class="fw-bold mb-0">Pasteleria Sory</h4>
@@ -684,8 +663,7 @@
                 </tr>
               </thead>
               <tbody id="recibo-detalles">
-                <!-- Los productos se inyectan aquí -->
-              </tbody>
+                </tbody>
             </table>
             
             <small>================================</small>
@@ -699,18 +677,13 @@
             </div>
           </div>
           
-          <!-- Botones del modal -->
           <div class="modal-footer p-2 bg-light">
             <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
-            <button type="button" class="btn btn-primary btn-sm" onclick="imprimirRecibo()">
-              <i class="bi bi-printer"></i> Imprimir
-            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Modal: Elegir empleado/usuario -->
     <div class="modal fade" id="modalUsuarios" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -730,7 +703,6 @@
       </div>
     </div>
 
-    <!--modal agregar nuevo usuario-->
     <div class="modal fade" id="modalAgregarUsuario" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg">
@@ -761,7 +733,6 @@
       </div>
     </div>
 
-    <!--modal reporte-->
     <div class="modal fade" id="modalReporteProductos" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content shadow-sm border-0">
@@ -810,7 +781,6 @@
       </div>
     </div>
 
-    <!-- modal de notificacion -->
     <div class="modal fade" id="modalNotificacion" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content text-center p-4" style="border-radius: 16px; border: none">
@@ -822,7 +792,6 @@
       </div>
     </div>
 
-    <!---modal de login-->
     <div class="modal fade" id="modalLoginInicio" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
@@ -851,6 +820,33 @@
               </a>
             </div>
             <div id="login-error" class="text-danger text-center mt-3 fw-bold" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal fade" id="modalRecuperarPass" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+          <div class="modal-header bg-dark text-white">
+            <h5 class="modal-title">Restablecer Contraseña</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <p class="text-muted small">Por seguridad, ingresa el PIN maestro y la nueva clave.</p>
+            <form id="form-recuperar-pass">
+              <div class="mb-3">
+                <label class="form-label">PIN Maestro</label>
+                <input type="password" id="recup-pin-maestro" class="form-control" placeholder="••••" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Nueva Contraseña</label>
+                <input type="password" id="recup-nueva-pass" class="form-control" placeholder="Nueva clave" required>
+              </div>
+              <div class="d-grid">
+                <button type="submit" class="btn btn-dark fw-bold">Actualizar Credenciales</button>
+              </div>
+            </form>
           </div>
         </div>
       </div>

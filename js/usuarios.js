@@ -245,35 +245,50 @@ document.getElementById("busqueda-usuarios-tabla")?.addEventListener("input", fu
   renderizarTablaUsuarios(filtrados);
 });
 
-// --- SISTEMA MASTER RESET DE CONTRASEÑA ---
-window.iniciarRecuperacion = async function() {
+// --- SISTEMA DE RECUPERACIÓN SEGURO (Sin prompts expuestos) ---
+window.iniciarRecuperacion = function() {
+  const idUsuario = document.getElementById("login-usuario").value;
+  if (!idUsuario) return mostrarErrorLogin("Selecciona tu usuario primero.");
+
+  // En lugar de prompt, abrimos el nuevo modal seguro
+  const modalRecup = new bootstrap.Modal(document.getElementById("modalRecuperarPass"));
+  modalRecup.show();
+};
+
+document.getElementById("form-recuperar-pass")?.addEventListener("submit", async function(e) {
+  e.preventDefault();
+  
   const idAdmin = document.getElementById("login-usuario").value;
-  if (!idAdmin) return mostrarErrorLogin("Primero selecciona tu usuario en la lista para recuperar la contraseña.");
+  const pinMaestro = document.getElementById("recup-pin-maestro").value;
+  const nuevaClave = document.getElementById("recup-nueva-pass").value;
 
-  const pinMaestro = prompt("🔑 SOPORTE:\nIngrese el PIN Maestro de Recuperación:");
-  if (pinMaestro !== "UNI-2026") return alert("❌ PIN Maestro incorrecto. Acceso denegado.");
-
-  const nuevaClave = prompt("✅ PIN Correcto.\nIngrese la NUEVA contraseña para este usuario:");
-  if (!nuevaClave || nuevaClave.trim() === "") return alert("Operación cancelada. La contraseña no puede estar vacía.");
+  // Validación del PIN Maestro
+  if (pinMaestro !== "UNI-2026") {
+    alert("❌ PIN Maestro incorrecto. Acceso denegado.");
+    return;
+  }
 
   try {
-      const hashNuevo = await hashPassword(nuevaClave);
-      const res = await fetch(`${API_URL_USUARIOS}/empleados/${idAdmin}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: hashNuevo, es_recuperacion: true })
-      });
+    const hashNuevo = await hashPassword(nuevaClave);
+    const res = await fetch(`${API_URL_USUARIOS}/empleados/${idAdmin}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: hashNuevo, es_recuperacion: true })
+    });
 
-      if (res.ok) {
-        alert("🎉 Contraseña restablecida con éxito. Ya puedes iniciar sesión con tu nueva clave.");
-        document.getElementById("login-password").value = ""; // Limpiar campo
-      }
-      else alert("Error al actualizar la contraseña en la base de datos.");
+    if (res.ok) {
+      alert("🎉 Éxito: La contraseña ha sido actualizada.");
+      bootstrap.Modal.getInstance(document.getElementById("modalRecuperarPass")).hide();
+      document.getElementById("form-recuperar-pass").reset();
+      document.getElementById("login-password").value = ""; 
+    } else {
+      alert("Error al actualizar en la base de datos.");
+    }
   } catch (error) {
-      console.error(error);
-      alert("Error de conexión al intentar recuperar.");
+    console.error(error);
+    alert("Error de conexión al intentar recuperar.");
   }
-};
+});
 
 
 // --- PERMISOS ---

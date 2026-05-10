@@ -241,35 +241,6 @@ window.abrirRecibo = async function(id, fecha, cliente, empleado, total) {
   }
 }
 
-// 6. IMPRIMIR EL RECIBO
-window.imprimirRecibo = function() {
-  const contenido = document.getElementById("area-imprimir-recibo").innerHTML;
-  const ventanaImpresion = window.open('', '', 'height=600,width=400');
-  
-  ventanaImpresion.document.write('<html><head><title>Ticket de Venta</title>');
-  ventanaImpresion.document.write(`
-    <style>
-      body { font-family: 'Courier New', Courier, monospace; font-size: 14px; padding: 10px; color: black; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-      th, td { text-align: left; padding: 2px 0; }
-      .text-end { text-align: right; }
-      .text-center { text-align: center; }
-      .fw-bold { font-weight: bold; }
-    </style>
-  `);
-  ventanaImpresion.document.write('</head><body>');
-  ventanaImpresion.document.write(contenido);
-  ventanaImpresion.document.write('</body></html>');
-  
-  ventanaImpresion.document.close();
-  ventanaImpresion.focus();
-  
-  setTimeout(() => {
-    ventanaImpresion.print();
-    ventanaImpresion.close();
-  }, 250);
-}
-
 async function iniciarPOSVenta() {
   await cargarProductosParaVenta();
   factura = [];
