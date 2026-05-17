@@ -19,8 +19,6 @@ function renderizarInsumos(insumos) {
   const tabla = document.querySelector("#insumos-table tbody");
   tabla.innerHTML = "";
   insumos.forEach((i) => {
-    
-    // Alerta visual de inventario bajo
     let colorStock = i.stock_actual <= 5 ? "text-danger" : "text-success";
     let iconoAlerta = i.stock_actual <= 5 ? '<i class="bi bi-exclamation-triangle-fill ms-1" title="¡Stock Crítico!"></i>' : '';
 
@@ -41,7 +39,6 @@ function renderizarInsumos(insumos) {
   });
 }
 
-// --- FASE 2: EL KARDEX VISUAL ---
 async function abrirKardex(id, nombre) {
   document.getElementById("kardex-titulo").innerHTML = `<i class="bi bi-box-seam"></i> Historial Kardex: ${nombre}`;
   const tbody = document.getElementById("kardex-body");
@@ -52,16 +49,13 @@ async function abrirKardex(id, nombre) {
     const res = await fetch(`${API_URL_INS}/kardex/${id}`);
     const movimientos = await res.json();
     tbody.innerHTML = "";
-    
     if(movimientos.length === 0) {
       tbody.innerHTML = "<tr><td colspan='5' class='text-center text-muted'>Bodega vacía. No hay ingresos ni gastos.</td></tr>";
       return;
     }
-
     movimientos.forEach(m => {
       let badgeMov = m.tipo_movimiento === 'ENTRADA' ? '<span class="badge bg-success">ENTRADA</span>' : '<span class="badge bg-danger">SALIDA</span>';
       let signo = m.tipo_movimiento === 'ENTRADA' ? '+' : '-';
-      
       tbody.insertAdjacentHTML("beforeend", `
         <tr>
           <td class="small">${new Date(m.fecha).toLocaleString()}</td>
@@ -75,16 +69,11 @@ async function abrirKardex(id, nombre) {
   } catch (error) { tbody.innerHTML = "<tr><td colspan='5' class='text-center text-danger'>Error al conectar con Azure.</td></tr>"; }
 }
 
-// --- FASE 2: INGRESAR MERCADERIA (COMPRAS) ---
 async function abrirModalCompraRapida() {
   await cargarProveedoresSelect("compra-proveedor");
-  
   const selInsumo = document.getElementById("compra-insumo");
   selInsumo.innerHTML = "<option value='' disabled selected>Selecciona lo que compraste...</option>";
-  insumosOriginal.forEach(i => {
-    selInsumo.innerHTML += `<option value="${i.id}">${i.nombre} (${i.unidad})</option>`;
-  });
-
+  insumosOriginal.forEach(i => { selInsumo.innerHTML += `<option value="${i.id}">${i.nombre} (${i.unidad})</option>`; });
   new bootstrap.Modal(document.getElementById("modalCompraRapida")).show();
 }
 
@@ -95,36 +84,31 @@ window.registrarCompra = async function(event) {
   const cantidad = parseFloat(document.getElementById("compra-cantidad").value);
   const costo_total = parseInt(document.getElementById("compra-total").value);
   const empleado_id = localStorage.getItem("usuario_id") ? parseInt(localStorage.getItem("usuario_id")) : null;
+  const tipo_pago = document.querySelector('input[name="tipoPago"]:checked').value;
 
-  if(!proveedor_id || !insumo_id || isNaN(cantidad) || cantidad <= 0 || isNaN(costo_total)) {
-    return alert("Todos los campos numéricos deben ser mayores a cero.");
-  }
+  if(!proveedor_id || !insumo_id || isNaN(cantidad) || cantidad <= 0 || isNaN(costo_total)) return alert("Campos numéricos deben ser mayores a cero.");
 
   try {
     const res = await fetch(`${API_URL_INS}/compras/rapida`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proveedor_id, insumo_id, cantidad, costo_total, empleado_id })
+      body: JSON.stringify({ proveedor_id, insumo_id, cantidad, costo_total, empleado_id, tipo_pago })
     });
-
     if(!res.ok) throw new Error("Error en la transacción");
-
-    alert("🚚 ¡Mercadería ingresada! El stock subió y la cuenta por pagar se ha guardado en finanzas.");
+    let msj = tipo_pago === 'CONTADO' ? "🚚 Mercadería ingresada al contado. Stock actualizado sin crear deuda." : "🚚 Mercadería ingresada al crédito. Se guardó la cuenta por pagar.";
+    alert(msj);
     document.getElementById("form-compra-rapida").reset();
     bootstrap.Modal.getInstance(document.getElementById("modalCompraRapida")).hide();
     cargarInsumos();
   } catch (error) { alert("Hubo un error de conexión con la nube."); }
 };
 
-
-// --- RESTO DE FUNCIONES MANTENIDAS INTACTAS ---
 async function cargarProveedoresSelect(selectId, seleccionado = null) {
   try {
     const res = await fetch(`${API_URL_INS}/proveedores`);
     const proveedores = await res.json();
     const select = document.getElementById(selectId);
     select.innerHTML = "<option value=''>Sin proveedor</option>";
-    
     proveedores.forEach(p => {
       proveedoresMap[p.id] = p.nombre;
       const option = document.createElement("option");
@@ -141,15 +125,9 @@ async function agregarInsumo(event) {
   const unidad = document.getElementById("unidad-insumo").value.trim();
   const precio = parseInt(document.getElementById("precio-insumo").value, 10);
   const proveedor_id = document.getElementById("proveedor-insumo").value || null;
-
   if (!nombre || !unidad || isNaN(precio) || precio <= 0) return alert("Datos inválidos");
-
   try {
-    await fetch(`${API_URL_INS}/insumos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre, unidad, precio, proveedor_id: proveedor_id ? parseInt(proveedor_id) : null })
-    });
+    await fetch(`${API_URL_INS}/insumos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, unidad, precio, proveedor_id: proveedor_id ? parseInt(proveedor_id) : null }) });
     bootstrap.Modal.getInstance(document.getElementById("modalAgregarInsumo")).hide();
     document.getElementById("form-agregar-insumo").reset();
     cargarInsumos();
@@ -158,10 +136,7 @@ async function agregarInsumo(event) {
 
 async function eliminarInsumo(id) {
   if (!confirm("¿Estás seguro que quieres eliminar este insumo?")) return;
-  try {
-    await fetch(`${API_URL_INS}/insumos/${id}`, { method: 'DELETE' });
-    cargarInsumos();
-  } catch (error) {}
+  try { await fetch(`${API_URL_INS}/insumos/${id}`, { method: 'DELETE' }); cargarInsumos(); } catch (error) {}
 }
 
 async function abrirEditarInsumo(id) {
@@ -169,7 +144,6 @@ async function abrirEditarInsumo(id) {
     const res = await fetch(`${API_URL_INS}/insumos/${id}`);
     const data = await res.json();
     await cargarProveedoresSelect("edit-proveedor-insumo", data.proveedor_id);
-    
     document.getElementById("edit-id-insumo").value = data.id;
     document.getElementById("edit-nombre-insumo").value = data.nombre;
     document.getElementById("edit-unidad-insumo").value = data.unidad || "";
@@ -185,28 +159,19 @@ async function actualizarInsumo(event) {
   const unidad = document.getElementById("edit-unidad-insumo").value.trim();
   const precio = parseInt(document.getElementById("edit-precio-insumo").value, 10);
   const proveedor_id = document.getElementById("edit-proveedor-insumo").value || null;
-
   try {
-    await fetch(`${API_URL_INS}/insumos/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre, unidad, precio, proveedor_id: proveedor_id ? parseInt(proveedor_id) : null })
-    });
+    await fetch(`${API_URL_INS}/insumos/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, unidad, precio, proveedor_id: proveedor_id ? parseInt(proveedor_id) : null }) });
     bootstrap.Modal.getInstance(document.getElementById("modalEditarInsumo")).hide();
     cargarInsumos();
   } catch (error) {}
 }
 
-window.abrirCalculadora = function() {
-  new bootstrap.Modal(document.getElementById("modalCalculadora")).show();
-}
+window.abrirCalculadora = function() { new bootstrap.Modal(document.getElementById("modalCalculadora")).show(); }
 
 function llenarSelectCalculadora(insumos) {
   const select = document.getElementById("calc-insumo");
   select.innerHTML = '<option value="">Selecciona qué insumo usarás...</option>';
-  insumos.forEach(i => {
-    select.innerHTML += `<option value="${i.id}" data-precio="${i.precio}" data-unidad="${i.unidad}">${i.nombre} (Costo: C$ ${i.precio})</option>`;
-  });
+  insumos.forEach(i => { select.innerHTML += `<option value="${i.id}" data-precio="${i.precio}" data-unidad="${i.unidad}">${i.nombre} (Costo: C$ ${i.precio})</option>`; });
 }
 
 function calcularReceta() {
@@ -219,11 +184,9 @@ function calcularReceta() {
     divRes.innerHTML = `<h6 class="text-muted">Llena los datos correctamente para ver el cálculo</h6>`;
     return;
   }
-
   const optionSel = select.options[select.selectedIndex];
   const precioSaco = parseFloat(optionSel.dataset.precio);
   const unidad = optionSel.dataset.unidad;
-  
   const insumosNecesarios = meta / rendimiento;
   const costoTotalProduccion = insumosNecesarios * precioSaco;
   const costoUnidad = costoTotalProduccion / meta;
@@ -250,7 +213,6 @@ document.getElementById("form-agregar-insumo").addEventListener("submit", agrega
 document.getElementById("form-editar-insumo").addEventListener("submit", actualizarInsumo);
 document.getElementById("modalAgregarInsumo").addEventListener("show.bs.modal", () => cargarProveedoresSelect("proveedor-insumo"));
 document.addEventListener("DOMContentLoaded", cargarInsumos);
-
 document.getElementById("calc-insumo").addEventListener("change", calcularReceta);
 document.getElementById("calc-rendimiento").addEventListener("input", calcularReceta);
 document.getElementById("calc-meta").addEventListener("input", calcularReceta);
