@@ -324,8 +324,8 @@
                 <select id="prod-produccion" class="form-select border-success" required></select>
               </div>
               <div class="mb-3">
-                <label class="form-label fw-bold">¿Cuántas unidades produjiste?</label>
-                <input type="number" id="cant-produccion" class="form-control border-success" min="1" step="1" required placeholder="Ej. 20">
+                <label class="form-label fw-bold">¿Cuántas unidades individuales produjiste?</label>
+                <input type="number" id="cant-produccion" class="form-control border-success" min="1" step="1" required placeholder="Ej. Si hiciste una bandeja de 25, digita 25">
               </div>
               <div class="p-3 bg-light rounded text-center small text-muted mb-3">
                 ⚠️ Al confirmar, el sistema buscará la receta del producto y descontará automáticamente las cantidades proporcionales de tu almacén de insumos en la nube.
@@ -381,7 +381,7 @@
           <div class="modal-body p-0">
             <table class="table table-striped m-0 align-middle">
               <thead class="table-dark">
-                <tr><th>Ingrediente</th><th>Cant. Requerida</th><th>Costo Proporcional</th></tr>
+                <tr><th>Ingrediente</th><th>Gasto Unitario Exacto</th><th>Costo Proporcional</th></tr>
               </thead>
               <tbody id="body-ver-receta"></tbody>
             </table>
@@ -427,7 +427,7 @@
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg border-warning">
           <div class="modal-header bg-warning text-dark">
-            <h5 class="modal-title fw-bold"><i class="bi bi-calculator"></i> Calculadora de Producción</h5>
+            <h5 class="modal-title fw-bold"><i class="bi bi-calculator"></i> Calculadora de Production</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body bg-light">
@@ -516,7 +516,7 @@
       <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content shadow-lg">
           <div class="modal-header bg-danger text-white">
-            <h5 class="modal-title fw-bold">Agregar producto e Inyectar Fórmula</h5>
+            <h5 class="modal-title fw-bold"><i class="bi bi-journal-plus"></i> Registrar Producto y Receta</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
@@ -524,11 +524,11 @@
               <div class="col-md-5 border-end">
                 <form id="form-agregar">
                   <div class="mb-3">
-                    <label class="form-label fw-bold">Nombre del producto <span class="text-danger">*</span></label>
-                    <input type="text" id="nombre" class="form-control" required placeholder="Ej. Churros de queso" />
+                    <label class="form-label fw-bold">Nombre de lo que vendes <span class="text-danger">*</span></label>
+                    <input type="text" id="nombre" class="form-control" required placeholder="Ej: Churro de Queso (Unidad)" />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label fw-bold">Precio Venta (Entero positivo) <span class="text-danger">*</span></label>
+                    <label class="form-label fw-bold">Precio de venta al público <span class="text-danger">*</span></label>
                     <input type="number" step="1" min="1" id="precio" class="form-control" required placeholder="C$" />
                   </div>
                   <div class="mb-3">
@@ -537,32 +537,42 @@
                       <option value="">Seleccione una categoría...</option>
                     </select>
                   </div>
-                  <div class="p-3 bg-light rounded text-center border">
-                    <div class="text-muted small fw-bold">Costo Acumulado Insumos:</div>
+                  <div class="p-3 bg-light rounded text-center border mt-4">
+                    <div class="text-muted small fw-bold">Costo Unitario Calculado:</div>
                     <h4 class="text-danger fw-bold m-0">C$ <span id="lbl-costo-receta">0</span></h4>
                   </div>
-                  <div class="d-grid mt-4"><button type="submit" class="btn btn-danger fw-bold btn-lg">Guardar Producto Completo</button></div>
+                  <div class="d-grid mt-4"><button type="submit" class="btn btn-danger fw-bold btn-lg">Guardar Todo</button></div>
                 </form>
               </div>
               
               <div class="col-md-7">
-                <h6 class="fw-bold mb-2 text-primary"><i class="bi bi-tools"></i> Armar Receta Múltiple</h6>
+                <h6 class="fw-bold mb-2 text-primary"><i class="bi bi-calculator"></i> Calculador de Recetas Inteligente</h6>
+                
+                <div class="alert alert-info py-2 px-3 small border-info shadow-sm mb-3">
+                  <i class="bi bi-info-circle-fill me-1"></i> <strong>¿Cómo se cocina?:</strong> Si vas a meter los ingredientes de una batea/bandeja entera que saca **25 churros**, escribe **25** abajo. Si es para un solo pastel, escribe **1**. El sistema dividirá los costos solito.
+                </div>
+
+                <div class="bg-light p-2 rounded border mb-3 row g-2 align-items-center">
+                  <div class="col-7"><label class="small fw-bold text-dark m-0">¿Para cuántas piezas rinde esta receta?</label></div>
+                  <div class="col-5"><input type="number" id="receta-rendimiento-lote" class="form-control form-control-sm border-primary text-center fw-bold" value="1" min="1"></div>
+                </div>
+
                 <div class="row g-2 mb-3">
                   <div class="col-6">
                     <select id="insumo-receta-select" class="form-select small"></select>
                   </div>
                   <div class="col-4">
-                    <input type="number" id="insumo-receta-cantidad" class="form-control" min="0.01" step="0.01" placeholder="Cant.">
+                    <input type="number" id="insumo-receta-cantidad" class="form-control" min="0.0001" step="0.0001" placeholder="¿Cuánto usas?">
                   </div>
                   <div class="col-2">
-                    <button type="button" class="btn btn-dark w-100" onclick="agregarIngredienteATemporal()"><i class="bi bi-plus"></i></button>
+                    <button type="button" class="btn btn-dark w-100" onclick="agregarIngredienteATemporal()" title="Agregar ingrediente"><i class="bi bi-plus-lg"></i></button>
                   </div>
                 </div>
                 
-                <div style="max-height: 220px; overflow-y: auto;">
+                <div style="max-height: 200px; overflow-y: auto;">
                   <table class="table table-sm table-striped small align-middle">
                     <thead class="table-dark">
-                      <tr><th>Ingrediente</th><th>Cant.</th><th>Subtotal</th><th></th></tr>
+                      <tr><th>Ingrediente</th><th>Cant. Digitada</th><th>Gasto Real x Unidad</th><th></th></tr>
                     </thead>
                     <tbody id="tabla-receta-temporal">
                       <tr><td colspan="4" class="text-center text-muted">No has añadido ingredientes aún.</td></tr>

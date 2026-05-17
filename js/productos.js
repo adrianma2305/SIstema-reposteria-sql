@@ -39,7 +39,12 @@ function renderizarProductos(productos) {
     
     let infoFinanciera = `<div class="fw-bold">C$ ${p.precio}</div>`;
     if (costoFabricacion > 0) {
-      infoFinanciera += `<small class="text-success fw-bold">Utilidad: C$ ${gananciaNeta.toFixed(0)}</small><br><small class="text-muted text-xs">Costo Insumos: C$ ${costoFabricacion.toFixed(0)}</small>`;
+      if(gananciaNeta >= 0) {
+        infoFinanciera += `<small class="text-success fw-bold">Utilidad: C$ ${gananciaNeta.toFixed(0)}</small>`;
+      } else {
+        infoFinanciera += `<small class="text-danger fw-bold">⚠️ Pérdida: C$ ${Math.abs(gananciaNeta).toFixed(0)}</small>`;
+      }
+      infoFinanciera += `<br><small class="text-muted text-xs">Costo Unitario: C$ ${costoFabricacion.toFixed(0)}</small>`;
     } else {
       infoFinanciera += `<small class="text-warning">Sin Receta (100% Margen)</small>`;
     }
@@ -67,7 +72,7 @@ async function cargarSelectInsumosReceta() {
     if(select) {
       select.innerHTML = '<option value="" disabled selected>Selecciona ingrediente...</option>';
       insumosAlmacenados.forEach(i => {
-        select.innerHTML += `<option value="${i.id}">繁殖 ${i.nombre} (${i.unidad})</option>`;
+        select.innerHTML += `<option value="${i.id}">${i.nombre} (${i.unidad})</option>`;
       });
     }
   } catch (error) {}
@@ -75,31 +80,42 @@ async function cargarSelectInsumosReceta() {
 
 function limpiarRecetaTemporal() {
   recetaTemporal = [];
+  document.getElementById("receta-rendimiento-lote").value = "1";
   renderizarTablaRecetaTemporal();
 }
 
+// AQUÍ ESTÁ EL TRUCO MAGICO DE DIVISIÓN AUTOMÁTICA PARA LA SEÑORA
 function agregarIngredienteATemporal() {
   const select = document.getElementById("insumo-receta-select");
   const cantInput = document.getElementById("insumo-receta-cantidad");
+  const rendimientoInput = document.getElementById("receta-rendimiento-lote");
   
+  const rendimientoLote = parseFloat(rendimientoInput.value) || 1;
+
   if(!select.value || !cantInput.value || parseFloat(cantInput.value) <= 0) {
-    return alert("Por favor selecciona un insumo y digita una cantidad positiva válida.");
+    return alert("Por favor selecciona un ingrediente y digita una cantidad válida.");
   }
 
   const insumoId = parseInt(select.value);
-  const cantidad = parseFloat(cantInput.value);
+  const cantidadDigitada = parseFloat(cantInput.value);
+  
+  // Dividimos la batea completa entre la cantidad de piezas que rinde (Súper fácil para ella)
+  const cantidadUnitariaCalculada = cantidadDigitada / rendimientoLote; 
+  
   const insumoObj = insumosAlmacenados.find(i => i.id === insumoId);
 
   if(recetaTemporal.some(item => item.insumo_id === insumoId)) {
-    return alert("Este ingrediente ya está en la receta. Elimínalo si deseas cambiar la cantidad.");
+    return alert("Este ingrediente ya está en la lista.");
   }
 
-  const subtotal = Math.ceil(cantidad * insumoObj.precio);
+  const subtotalCostoUnitario = cantidadUnitariaCalculada * insumoObj.precio;
+
   recetaTemporal.push({
     insumo_id: insumoId,
     nombre: insumoObj.nombre,
-    cantidad_necesaria: cantidad,
-    subtotal: subtotal
+    cantidad_lote_visible: cantidadDigitada, // Lo que ella escribió
+    cantidad_necesaria: cantidadUnitariaCalculada, // Lo que espera recibir la base de datos
+    subtotal: subtotalCostoUnitario
   });
 
   cantInput.value = "";
@@ -124,20 +140,25 @@ function renderizarTablaRecetaTemporal() {
     return;
   }
 
-  let costoAcumulado = 0;
+  let costoAcumuladoUnidad = 0;
   recetaTemporal.forEach((item, index) => {
-    costoAcumulado += item.subtotal;
+    costoAcumuladoUnidad += item.subtotal;
     tbody.insertAdjacentHTML("beforeend", `
       <tr>
-        <td>${item.nombre}</td>
-        <td>${item.cantidad_necesaria}</td>
-        <td class="fw-bold">C$ ${item.subtotal}</td>
-        <td class="text-end"><button type="button" class="btn btn-sm btn-link p-0 text-danger" onclick="quitarIngredienteTemporal(${index})"><i class="bi bi-trash"></i></button></td>
+        <td><strong>${item.nombre}</strong></td>
+        <td>${item.cantidad_lote_visible} <small class="text-muted">(para el lote)</small></td>
+        <td><span class="badge bg-secondary">${item.cantidad_necesaria.toFixed(4)} / ud</span></td>
+        <td class="fw-bold text-success">C$ ${item.subtotal.toFixed(1)}</td>
+        <td class="text-end">
+          <button type="button" class="btn btn-sm btn-link p-0 text-danger" onclick="quitarIngredienteTemporal(${index})">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
       </tr>
     `);
   });
 
-  lblTotal.innerText = costoAcumulado;
+  lblTotal.innerText = Math.ceil(costoAcumuladoUnidad);
 }
 
 // --- VER FORMULA DETALLADA ---
@@ -163,7 +184,7 @@ async function verRecetaModal(id, nombreProducto) {
       tbody.insertAdjacentHTML("beforeend", `
         <tr>
           <td class="fw-bold">${d.nombre_insumo}</td>
-          <td>${d.cantidad_necesaria} (${d.unidad})</td>
+          <td>${parseFloat(d.cantidad_necesaria).toFixed(4)} (${d.unidad})</td>
           <td class="text-primary fw-bold">C$ ${Math.ceil(d.subtotal_costo)}</td>
         </tr>
       `);
@@ -174,7 +195,6 @@ async function verRecetaModal(id, nombreProducto) {
 // --- ENVIAR PRODUCTO NUEVO CON SU EMBEBIDO DE RECETA ---
 async function agregarProducto(event) {
   event.preventDefault();
-  if (!esAdmin()) return;
   
   const nombre = document.getElementById("nombre").value.trim();
   const precio = parseInt(document.getElementById("precio").value, 10);
