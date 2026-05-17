@@ -138,12 +138,8 @@ document.getElementById("btn-guardar-venta").addEventListener("click", async () 
     actualizarUIFactura();
     cargarCatVentas(); 
 
-  } catch (error) {
-    alert("Hubo un error de conexión al guardar la venta.");
-  } finally {
-    btnGuardar.disabled = false;
-    btnGuardar.innerText = "Guardar venta";
-  }
+  } catch (error) { alert("Hubo un error de conexión al guardar la venta."); } 
+  finally { btnGuardar.disabled = false; btnGuardar.innerText = "Guardar venta"; }
 });
 
 async function cargarVentasHistorial() {
@@ -177,7 +173,6 @@ window.verDetalleVenta = async function(idVenta, cliente, fecha, empleado, total
   } catch (error) { alert("Error al cargar los detalles del ticket."); }
 };
 
-// --- EL RECIBO SIN PUNTOS SUSPENSIVOS ---
 function abrirRecibo(id, cliente, empleado, detalles, total, fechaStr = null) {
   document.getElementById("recibo-id").innerText = id;
   document.getElementById("recibo-fecha").innerText = fechaStr || new Date().toLocaleString();
@@ -189,8 +184,6 @@ function abrirRecibo(id, cliente, empleado, detalles, total, fechaStr = null) {
   tbody.innerHTML = "";
   detalles.forEach(d => {
     const precio = d.precio_unitario ? (d.subtotal / d.cantidad) : (d.subtotal / d.cantidad);
-    
-    // Le quitamos el truncado al diseño de la fila para que baje el texto largo
     tbody.insertAdjacentHTML('beforeend', `
       <tr>
         <td class="text-start pb-2 align-top">${d.cantidad}</td>
@@ -205,11 +198,42 @@ function abrirRecibo(id, cliente, empleado, detalles, total, fechaStr = null) {
   new bootstrap.Modal(document.getElementById("modalRecibo")).show();
 }
 
+// --- FASE 5: LA MAGIA DEL CORTE DE CAJA ---
+window.abrirCorteCaja = async function() {
+    try {
+        const res = await fetch(`${API_URL_VENTAS}/reportes/corte-caja`);
+        
+        if (!res.ok) {
+            const errorDelServidor = await res.text();
+            throw new Error(errorDelServidor || "El servidor en Render no ha terminado de actualizarse. Espera 1 minuto.");
+        }
+
+        const data = await res.json();
+
+        document.getElementById("corte-fecha").innerText = new Date().toLocaleDateString();
+        document.getElementById("corte-ventas").innerText = `C$ ${data.ventas}`;
+        document.getElementById("corte-gastos").innerText = `C$ ${data.gastos}`;
+        
+        const hCaja = document.getElementById("corte-caja-total");
+        hCaja.innerText = `C$ ${data.caja}`;
+        
+        if (data.caja < 0) {
+            hCaja.classList.remove("text-success");
+            hCaja.classList.add("text-danger");
+        } else {
+            hCaja.classList.remove("text-danger");
+            hCaja.classList.add("text-success");
+        }
+
+        new bootstrap.Modal(document.getElementById("modalCorteCaja")).show();
+    } catch (error) {
+        alert("⚠️ DETALLE DEL ERROR:\n" + error.message);
+    }
+};
+
 document.getElementById("busqueda-venta-productos")?.addEventListener("input", function(e) {
   const val = e.target.value.toLowerCase();
   renderizarGridVentas(productosVenta.filter(p => p.nombre.toLowerCase().includes(val)));
 });
 
-document.getElementById("btn-ir-ventas")?.addEventListener("click", () => {
-    cargarCatVentas();
-});
+document.getElementById("btn-ir-ventas")?.addEventListener("click", () => { cargarCatVentas(); });
