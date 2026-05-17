@@ -1,31 +1,36 @@
 const API_URL_VENTAS = "https://sistema-pasteleria-sql.onrender.com/api";
-let productosParaVenta = [];
-let factura = [];
+let productosVenta = [];
+let carritoActual = [];
 
-// 1. CARGAR PRODUCTOS EN LA CUADRÍCULA 
-async function cargarProductosParaVenta() {
+async function cargarCatVentas() {
   try {
     const res = await fetch(`${API_URL_VENTAS}/productos`);
-    if (!res.ok) throw new Error("Error al cargar productos");
-    const productos = await res.json();
-    
-    productosParaVenta = productos;
-    renderizarGridProductosVenta(productos);
-  } catch(error) {
-    console.error("Error cargando productos para venta:", error);
-  }
+    productosVenta = await res.json();
+    renderizarGridVentas(productosVenta);
+    cargarVentasHistorial();
+  } catch (error) { console.error("Error", error); }
 }
 
-function renderizarGridProductosVenta(listado) {
+function renderizarGridVentas(productos) {
   const grid = document.getElementById("grid-productos-venta");
+  if (!grid) return;
   grid.innerHTML = "";
-  listado.forEach((p) => {
-    grid.insertAdjacentHTML("beforeend", `
+  
+  productos.forEach(p => {
+    // FASE 4: LÓGICA DE AGOTADOS
+    const agotado = p.stock <= 0;
+    const cardClass = agotado ? "bg-light text-muted border-danger" : "border-primary cursor-pointer";
+    const opacity = agotado ? "opacity-50" : "";
+    const onClick = agotado ? `onclick="alert('¡Agotado! Debes hornear más ${p.nombre}.')"` : `onclick="agregarAlCarrito(${p.id})"`;
+    const badgeStock = agotado ? `<span class="badge bg-danger">Agotado</span>` : `<span class="badge bg-success">${p.stock} en vitrina</span>`;
+
+    grid.insertAdjacentHTML('beforeend', `
       <div class="col">
-        <div class="card producto-card h-100" onclick="agregarAFactura(${p.id})">
-          <div class="card-body text-center">
-            <h6 class="mb-1">${p.nombre}</h6>
-            <div class="mb-2 text-muted small">C$ ${p.precio.toFixed(2)}</div>
+        <div class="card h-100 shadow-sm ${cardClass}" style="${agotado ? '' : 'cursor: pointer;'} transition: 0.2s;" ${onClick}>
+          <div class="card-body p-2 text-center ${opacity}">
+            <div class="small fw-bold mb-1" style="min-height: 2.5rem;">${p.nombre}</div>
+            <div class="text-primary fw-bold mb-1">C$ ${p.precio}</div>
+            ${badgeStock}
           </div>
         </div>
       </div>
@@ -33,237 +38,182 @@ function renderizarGridProductosVenta(listado) {
   });
 }
 
-// 2. LÓGICA DE LA FACTURA 
-window.agregarAFactura = function (id) {
-  const prod = productosParaVenta.find((p) => p.id == id);
+window.agregarAlCarrito = function(idProd) {
+  const prod = productosVenta.find(p => p.id === idProd);
   if (!prod) return;
 
-  const idx = factura.findIndex((item) => item.id == id);
-  if (idx >= 0) {
-    factura[idx].cantidad += 1;
+  const itemExistente = carritoActual.find(i => i.producto_id === idProd);
+  
+  // FASE 4: Evitar que metan al carrito más de lo que hay horneado
+  if (itemExistente) {
+    if (itemExistente.cantidad >= prod.stock) {
+      return alert(`¡Hey! Solo tienes ${prod.stock} unidades de ${prod.nombre} horneadas en la vitrina.`);
+    }
+    itemExistente.cantidad++;
+    itemExistente.subtotal = itemExistente.cantidad * itemExistente.precio_unitario;
   } else {
-    factura.push({ id: prod.id, nombre: prod.nombre, precio: parseFloat(prod.precio), cantidad: 1 });
+    if (prod.stock < 1) return alert("Agotado");
+    carritoActual.push({ producto_id: prod.id, nombre: prod.nombre, cantidad: 1, precio_unitario: prod.precio, subtotal: prod.precio });
   }
-  renderFactTabla();
+  actualizarUIFactura();
 };
 
-function renderFactTabla() {
+window.reducirDelCarrito = function(idProd) {
+  const itemExistente = carritoActual.find(i => i.producto_id === idProd);
+  if (itemExistente) {
+    itemExistente.cantidad--;
+    itemExistente.subtotal = itemExistente.cantidad * itemExistente.precio_unitario;
+    if (itemExistente.cantidad === 0) carritoActual = carritoActual.filter(i => i.producto_id !== idProd);
+  }
+  actualizarUIFactura();
+};
+
+function actualizarUIFactura() {
   const tbody = document.getElementById("tabla-factura");
+  const totalEl = document.getElementById("factura-total");
+  const btnGuardar = document.getElementById("btn-guardar-venta");
+  
   tbody.innerHTML = "";
   let total = 0;
-  
-  factura.forEach((item) => {
-    const subtotal = item.precio * item.cantidad;
-    total += subtotal;
-    tbody.insertAdjacentHTML("beforeend", `
+
+  carritoActual.forEach(item => {
+    total += item.subtotal;
+    tbody.insertAdjacentHTML('beforeend', `
       <tr>
-        <td>${item.nombre}</td>
+        <td class="small text-truncate" style="max-width: 120px;">${item.nombre}</td>
         <td>
-          <input type="number" min="1" style="width: 50px;" value="${item.cantidad}" onchange="setCantidadFact(${item.id},this.value)">
-          <button class="btn btn-link btn-sm p-0 ms-2" onclick="quitarDeFactura(${item.id})"><i class="bi bi-x-lg text-danger"></i></button>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary py-0 px-1" onclick="reducirDelCarrito(${item.producto_id})">-</button>
+                <span class="btn border-0 py-0 px-1 fw-bold">${item.cantidad}</span>
+                <button class="btn btn-outline-secondary py-0 px-1" onclick="agregarAlCarrito(${item.producto_id})">+</button>
+            </div>
         </td>
-        <td>C$ ${subtotal.toFixed(2)}</td>
-        <td></td>
-      </tr>`
-    );
+        <td class="fw-bold text-success">C$ ${item.subtotal}</td>
+        <td><button class="btn btn-sm text-danger p-0" onclick="eliminarDelCarrito(${item.producto_id})"><i class="bi bi-x-circle"></i></button></td>
+      </tr>
+    `);
   });
-  
-  document.getElementById("factura-total").innerText = "C$ " + total.toFixed(2);
-  document.getElementById("btn-guardar-venta").disabled = factura.length === 0;
+
+  totalEl.innerText = `C$ ${total}`;
+  btnGuardar.disabled = carritoActual.length === 0;
 }
 
-window.setCantidadFact = function (id, val) {
-  val = Math.max(1, parseInt(val));
-  const prod = factura.find((p) => p.id == id);
-  if (prod) prod.cantidad = val;
-  renderFactTabla();
+window.eliminarDelCarrito = function(idProd) {
+  carritoActual = carritoActual.filter(i => i.producto_id !== idProd);
+  actualizarUIFactura();
 };
 
-window.quitarDeFactura = function (id) {
-  factura = factura.filter((item) => item.id != id);
-  renderFactTabla();
-};
-
-document.getElementById("busqueda-venta-productos").addEventListener("input", function () {
-  const val = this.value.trim().toLowerCase();
-  const filtrados = productosParaVenta.filter((p) => p.nombre.toLowerCase().includes(val));
-  renderizarGridProductosVenta(filtrados);
-});
-
-// 3. GUARDAR LA VENTA Y CREAR CLIENTE 
-async function obtenerOCrearCliente() {
-  const nombreInput = document.getElementById("cliente-nombre");
-  const telInput = document.getElementById("cliente-telefono");
-
-  if (!nombreInput || !telInput) return null;
-
-  const nombre = nombreInput.value.trim();
-  const telefono = telInput.value.trim();
-
-  if (!nombre) return null;
+document.getElementById("btn-guardar-venta").addEventListener("click", async () => {
+  const nombreCliente = document.getElementById("cliente-nombre").value.trim();
+  const telefonoCliente = document.getElementById("cliente-telefono").value.trim();
+  const empleado_id = localStorage.getItem("usuario_id") ? parseInt(localStorage.getItem("usuario_id")) : null;
+  const btnGuardar = document.getElementById("btn-guardar-venta");
+  
+  btnGuardar.disabled = true;
+  btnGuardar.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Procesando...`;
 
   try {
-    const resBusq = await fetch(`${API_URL_VENTAS}/clientes?nombre=${encodeURIComponent(nombre)}`);
-    const encontrados = await resBusq.json();
-
-    if (encontrados && encontrados.length > 0) {
-      return encontrados[0].id; 
+    let cliente_id = null;
+    if (nombreCliente) {
+      const resCli = await fetch(`${API_URL_VENTAS}/clientes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: nombreCliente, telefono: telefonoCliente }) });
+      const dataCli = await resCli.json();
+      cliente_id = dataCli.id;
     }
 
-    const resCrear = await fetch(`${API_URL_VENTAS}/clientes`, {
+    let totalVenta = carritoActual.reduce((acc, item) => acc + item.subtotal, 0);
+
+    const resVenta = await fetch(`${API_URL_VENTAS}/ventas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre, telefono })
+      body: JSON.stringify({ cliente_id, empleado_id, total: totalVenta, detalles: carritoActual })
     });
+
+    if (!resVenta.ok) throw new Error("Error al guardar venta");
+    const dataVenta = await resVenta.json();
+
+    alert("✅ Venta registrada con éxito.");
     
-    const nuevo = await resCrear.json();
-    return nuevo.id; 
+    // Mostramos el recibo automáticamente
+    abrirRecibo(dataVenta.id, nombreCliente || "Consumidor Final", empleado_id, carritoActual, totalVenta);
 
-  } catch (error) {
-    console.error("Error procesando cliente", error);
-    return null;
-  }
-}
-
-document.getElementById("btn-guardar-venta").onclick = async function () {
-  if (factura.length === 0) return;
-  document.getElementById("btn-guardar-venta").disabled = true;
-
-  const clienteId = await obtenerOCrearCliente();
-  const empleadoIdStr = localStorage.getItem("usuario_id");
-  const empleadoId = empleadoIdStr ? parseInt(empleadoIdStr) : null;
-  const totalFactura = factura.reduce((acc, item) => acc + (item.cantidad * item.precio), 0);
-
-  const detallesVenta = factura.map(item => ({
-      producto_id: item.id,
-      cantidad: item.cantidad,
-      precio_unitario: item.precio,
-      subtotal: item.cantidad * item.precio
-  }));
-
-  try {
-    const res = await fetch(`${API_URL_VENTAS}/ventas`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-          cliente_id: clienteId,
-          empleado_id: empleadoId,
-          total: totalFactura,
-          detalles: detallesVenta
-      })
-    });
-
-    if (!res.ok) throw new Error("No se pudo registrar la venta");
-
-    factura = [];
-    renderFactTabla();
+    // Limpiar carrito
+    carritoActual = [];
     document.getElementById("cliente-nombre").value = "";
     document.getElementById("cliente-telefono").value = "";
+    actualizarUIFactura();
+    
+    // Recargar productos para que el stock baje visualmente
+    cargarCatVentas(); 
 
-    cargarVentas();
-    mostrarNotificacion({ titulo: "Venta registrada", mensaje: "Venta guardada exitosamente.", tipo: "success" });
   } catch (error) {
-    console.error(error);
-    mostrarNotificacion({ titulo: "Error", mensaje: "No se pudo registrar la venta.", tipo: "error" });
-    document.getElementById("btn-guardar-venta").disabled = false;
+    alert("Hubo un error de conexión al guardar la venta.");
+  } finally {
+    btnGuardar.disabled = false;
+    btnGuardar.innerText = "Guardar venta";
   }
-};
+});
 
-// 4. CARGAR HISTORIAL DE VENTAS (NUEVA VISTA RESUMIDA)
-async function cargarVentas() {
-  const tabla = document.querySelector("#ventas-table tbody");
-  tabla.innerHTML = "<tr><td colspan='6' class='text-center'>Cargando historial...</td></tr>";
-
+async function cargarVentasHistorial() {
+  const tbody = document.querySelector("#ventas-table tbody");
+  tbody.innerHTML = "<tr><td colspan='6' class='text-center'>Cargando tickets...</td></tr>";
   try {
     const res = await fetch(`${API_URL_VENTAS}/ventas`);
-    if (!res.ok) throw new Error("Error de red");
     const ventas = await res.json();
-
-    tabla.innerHTML = "";
-    ventas.forEach((v) => {
-      const fechaStr = v.fecha ? new Date(v.fecha).toLocaleString() : "";
-      
-      tabla.insertAdjacentHTML("beforeend", `
+    tbody.innerHTML = "";
+    ventas.forEach(v => {
+      const fecha = new Date(v.fecha).toLocaleString();
+      tbody.insertAdjacentHTML('beforeend', `
         <tr>
           <td class="fw-bold text-primary">#${v.id}</td>
-          <td>${fechaStr}</td>
-          <td><i class="bi bi-person me-1"></i> ${v.cliente}</td>
-          <td><small class="text-muted">${v.empleado}</small></td>
-          <td class="fw-bold text-success">C$ ${v.total.toFixed(2)}</td>
-          <td class="text-center">
-            <button class="btn btn-sm btn-outline-primary" onclick="abrirRecibo(${v.id}, '${fechaStr}', '${v.cliente}', '${v.empleado}', ${v.total})">
-              <i class="bi bi-receipt"></i> Ver Ticket
-            </button>
-          </td>
+          <td class="small">${fecha}</td>
+          <td>${v.cliente}</td>
+          <td><span class="badge bg-secondary"><i class="bi bi-person"></i> ${v.empleado}</span></td>
+          <td class="fw-bold text-success">C$ ${v.total}</td>
+          <td class="text-center"><button class="btn btn-sm btn-outline-dark" onclick="verDetalleVenta(${v.id}, '${v.cliente}', '${fecha}', '${v.empleado}', ${v.total})"><i class="bi bi-printer"></i> Ticket</button></td>
         </tr>
       `);
     });
-  } catch (error) {
-    tabla.innerHTML = `<tr><td colspan='6' class='text-center text-danger'>Error al cargar las ventas.</td></tr>`;
-    console.error(error);
-  }
+  } catch (error) { tbody.innerHTML = "<tr><td colspan='6' class='text-center text-danger'>Error al cargar historial</td></tr>"; }
 }
 
-// 5. ABRIR EL MODAL DEL RECIBO Y LLENAR LOS DETALLES
-window.abrirRecibo = async function(id, fecha, cliente, empleado, total) {
-  // Llenar el encabezado del recibo
+window.verDetalleVenta = async function(idVenta, cliente, fecha, empleado, total) {
+  try {
+    const res = await fetch(`${API_URL_VENTAS}/ventas/${idVenta}/detalles`);
+    const detalles = await res.json();
+    abrirRecibo(idVenta, cliente, empleado, detalles, total, fecha);
+  } catch (error) { alert("Error al cargar los detalles del ticket."); }
+};
+
+function abrirRecibo(id, cliente, empleado, detalles, total, fechaStr = null) {
   document.getElementById("recibo-id").innerText = id;
-  document.getElementById("recibo-fecha").innerText = fecha;
+  document.getElementById("recibo-fecha").innerText = fechaStr || new Date().toLocaleString();
   document.getElementById("recibo-cliente").innerText = cliente;
-  document.getElementById("recibo-empleado").innerText = empleado;
-  document.getElementById("recibo-total").innerText = "C$ " + parseFloat(total).toFixed(2);
+  document.getElementById("recibo-empleado").innerText = empleado || "Admin";
+  document.getElementById("recibo-total").innerText = `C$ ${total}`;
 
   const tbody = document.getElementById("recibo-detalles");
-  tbody.innerHTML = "<tr><td colspan='3' class='text-center'>Cargando detalles...</td></tr>";
+  tbody.innerHTML = "";
+  detalles.forEach(d => {
+    // Si viene del carrito se llama precio_unitario, si viene del historial ya trae subtotal
+    const precio = d.precio_unitario ? (d.subtotal / d.cantidad) : (d.subtotal / d.cantidad);
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td class="text-start pb-1">${d.cantidad}</td>
+        <td class="text-start pb-1 text-truncate" style="max-width: 150px;">${d.nombre} <br><small class="text-muted">C$ ${precio}</small></td>
+        <td class="text-end pb-1">C$ ${d.subtotal}</td>
+      </tr>
+    `);
+  });
 
-  // Mostrar el modal
-  const modal = new bootstrap.Modal(document.getElementById("modalRecibo"));
-  modal.show();
-
-  // Buscar los productos de esta venta en el backend
-  try {
-    const res = await fetch(`${API_URL_VENTAS}/ventas/${id}/detalles`);
-    if (!res.ok) throw new Error("Error al cargar detalles");
-    const detalles = await res.json();
-
-    tbody.innerHTML = "";
-    detalles.forEach(d => {
-      tbody.insertAdjacentHTML("beforeend", `
-        <tr>
-          <td class="text-start">${d.cantidad}</td>
-          <td class="text-start">${d.nombre}</td>
-          <td class="text-end">C$ ${d.subtotal.toFixed(2)}</td>
-        </tr>
-      `);
-    });
-  } catch (error) {
-    tbody.innerHTML = "<tr><td colspan='3' class='text-center text-danger'>No se pudieron cargar los productos</td></tr>";
-  }
+  new bootstrap.Modal(document.getElementById("modalRecibo")).show();
 }
 
-async function iniciarPOSVenta() {
-  await cargarProductosParaVenta();
-  factura = [];
-  renderFactTabla();
-}
+document.getElementById("busqueda-venta-productos")?.addEventListener("input", function(e) {
+  const val = e.target.value.toLowerCase();
+  renderizarGridVentas(productosVenta.filter(p => p.nombre.toLowerCase().includes(val)));
+});
 
-function mostrarNotificacion({ titulo = "¡Aviso!", mensaje = "", tipo = "success", tiempo = 1500 }) {
-  const modalEl = document.getElementById("modalNotificacion");
-  const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-  
-  document.getElementById("notif-title").innerText = titulo;
-  document.getElementById("notif-text").innerText = mensaje;
-  
-  let iconHtml = "";
-  if (tipo === "success") iconHtml = '<i class="bi bi-check-circle" style="color:#3dc964"></i>';
-  else if (tipo === "error") iconHtml = '<i class="bi bi-x-circle" style="color:#e74c3c"></i>';
-  else if (tipo === "warning") iconHtml = '<i class="bi bi-exclamation-circle" style="color:#ffc107"></i>';
-  else iconHtml = '<i class="bi bi-info-circle" style="color:#3498db"></i>';
-  
-  document.getElementById("notif-icon").innerHTML = iconHtml;
-  modal.show();
-
-  if (tiempo > 0) {
-    setTimeout(() => modal.hide(), tiempo);
-  }
-}
+// Actualizamos el dashboard automáticamente al entrar
+document.getElementById("btn-ir-ventas")?.addEventListener("click", () => {
+    cargarCatVentas();
+});
