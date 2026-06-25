@@ -1,6 +1,10 @@
 const API_URL_DASH = "https://sistema-pasteleria-sql.onrender.com/api";
 let chartVentas, chartTop;
 
+// Variables globales para guardar los datos y mandarlos al PDF
+let datosReporteGlobal = [];
+let datosMensualGlobal = [];
+
 async function cargarDashboard() {
   try {
     const resResumen = await fetch(`${API_URL_DASH}/dashboard/resumen`);
@@ -66,21 +70,31 @@ async function cargarGraficoTopProductos() {
   } catch (error) { console.error(error); }
 }
 
-// --- RENDIMIENTO CONTABLE (LLENADO SIMULTÁNEO DE LAS DOS PESTAÑAS) ---
 window.abrirReporteCompleto = async function() {
   const modal = new bootstrap.Modal(document.getElementById("modalReporteProductos"));
   modal.show();
   
+  // INYECCIÓN DEL BOTÓN PDF EN EL MODAL
+  const modalHeader = document.querySelector("#modalReporteProductos .modal-header");
+  if(modalHeader && !document.getElementById("btn-exportar-pdf")) {
+      const btnPdf = document.createElement("button");
+      btnPdf.id = "btn-exportar-pdf";
+      btnPdf.className = "btn btn-danger btn-sm ms-auto me-3 fw-bold shadow-sm";
+      btnPdf.innerHTML = '<i class="bi bi-file-earmark-pdf-fill"></i> Exportar a PDF';
+      btnPdf.onclick = generarPDFReporte;
+      modalHeader.insertBefore(btnPdf, modalHeader.querySelector(".btn-close"));
+  }
+
   const tbody = document.getElementById("tabla-reporte-general-body");
   const divMensual = document.getElementById("contenido-reporte-mensual");
   
   tbody.innerHTML = "<tr><td colspan='4' class='text-center'>Cargando desglose de productos...</td></tr>";
   divMensual.innerHTML = "<div class='text-center p-4 text-muted'>Calculando registros históricos mensuales...</div>";
 
-  // PESTAÑA 1: Cargar Rendimiento por Producto
   try {
     const res = await fetch(`${API_URL_DASH}/reportes/financiero`);
     const datos = await res.json();
+    datosReporteGlobal = datos; // Guardamos en global para el PDF
     tbody.innerHTML = "";
     
     if(datos.length === 0) {
@@ -101,10 +115,10 @@ window.abrirReporteCompleto = async function() {
     }
   } catch (error) { tbody.innerHTML = "<tr><td colspan='4' class='text-center text-danger'>Error al conectar con la base de datos de productos.</td></tr>"; }
 
-  // PESTAÑA 2: Cargar Resumen Mensual Agrupado (¡NUEVO!)
   try {
     const resM = await fetch(`${API_URL_DASH}/reportes/mensual`);
     const datosM = await resM.json();
+    datosMensualGlobal = datosM; // Guardamos en global para el PDF
     divMensual.innerHTML = "";
     
     if(datosM.length === 0) {
@@ -136,12 +150,92 @@ window.abrirReporteCompleto = async function() {
   } catch (error) { divMensual.innerHTML = "<div class='text-center text-danger p-4'>Error al procesar el resumen mensual.</div>"; }
 };
 
-// Traductor estético de formato numérico a texto para la presentación de la UNI
 function mesANombre(formatoMes) {
   const [mes, anio] = formatoMes.split('-');
   const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
   return `${meses[parseInt(mes) - 1]} del ${anio}`;
 }
+
+// --- FUNCIÓN MAESTRA PARA GENERAR EL PDF BANCARIO ---
+window.generarPDFReporte = function() {
+    const fechaActual = new Date().toLocaleDateString();
+    
+    let filasMensual = "";
+    let granTotal = 0;
+    datosMensualGlobal.forEach(m => {
+        granTotal += m.total_ganado;
+        filasMensual += `<tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">Mes de ${mesANombre(m.mes)}</td>
+            <td style="text-align:center; padding: 8px; border-bottom: 1px solid #ddd;">${m.total_tickets}</td>
+            <td style="text-align:right; font-weight:bold; padding: 8px; border-bottom: 1px solid #ddd;">C$ ${m.total_ganado}.00</td>
+        </tr>`;
+    });
+
+    let filasRendimiento = "";
+    datosReporteGlobal.forEach(d => {
+        filasRendimiento += `<tr>
+            <td style="padding: 6px; border-bottom: 1px solid #eee;">${d.producto}</td>
+            <td style="text-align:center; padding: 6px; border-bottom: 1px solid #eee;">${d.tickets}</td>
+            <td style="text-align:center; padding: 6px; border-bottom: 1px solid #eee;">${d.unidades}</td>
+            <td style="text-align:right; padding: 6px; border-bottom: 1px solid #eee;">C$ ${d.ingreso_total}</td>
+        </tr>`;
+    });
+
+    const contenidoHtml = `
+    <div style="font-family: 'Arial', sans-serif; padding: 20px; color: #333;">
+        <div style="text-align: center; border-bottom: 2px solid #ff69b7; padding-bottom: 15px; margin-bottom: 20px;">
+            <h2 style="margin: 0; color: #ff69b7; text-transform: uppercase;">Repostería Sory</h2>
+            <p style="margin: 5px 0 0 0; color: #555; font-weight: bold;">Documento de Rendimiento Financiero y Ventas</p>
+            <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #777;">Generado por el Sistema Central el: ${fechaActual}</p>
+        </div>
+        
+        <h4 style="background-color: #f8f9fa; padding: 8px; border-left: 4px solid #333; margin-top: 30px;">1. Resumen de Ingresos Históricos</h4>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 0.95em;">
+            <thead>
+                <tr style="background-color: #333; color: white;">
+                    <th style="padding: 10px; text-align:left;">Período Contable</th>
+                    <th style="padding: 10px; text-align:center;">Volumen (Facturas)</th>
+                    <th style="padding: 10px; text-align:right;">Ingreso Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${filasMensual}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="2" style="text-align:right; padding: 15px; font-weight:bold;">INGRESOS TOTALES REGISTRADOS:</td>
+                    <td style="text-align:right; padding: 15px; font-weight:bold; color: green; font-size: 1.2em;">C$ ${granTotal}.00</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <h4 style="background-color: #f8f9fa; padding: 8px; border-left: 4px solid #333;">2. Desglose de Rentabilidad por Producto</h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
+            <thead>
+                <tr style="background-color: #555; color: white;">
+                    <th style="padding: 8px; text-align:left;">Producto / Ítem</th>
+                    <th style="padding: 8px; text-align:center;">Nº Ventas</th>
+                    <th style="padding: 8px; text-align:center;">Unidades Salientes</th>
+                    <th style="padding: 8px; text-align:right;">Recaudación</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${filasRendimiento}
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 60px; text-align: center;">
+            <p style="border-top: 1px solid #000; display: inline-block; padding-top: 5px; width: 250px; color: #000; font-weight: bold;">Firma Autorizada / Sello Gerencial</p>
+        </div>
+    </div>
+    `;
+
+    const ventana = window.open('', '_blank', 'height=800, width=800');
+    ventana.document.write('<html><head><title>Reporte Financiero Oficial</title></head><body onload="setTimeout(function(){ window.print(); window.close(); }, 500);">');
+    ventana.document.write(contenidoHtml);
+    ventana.document.write('</body></html>');
+    ventana.document.close();
+};
 
 document.getElementById("btn-ir-inicio")?.addEventListener("click", () => { cargarDashboard(); });
 document.addEventListener("DOMContentLoaded", cargarDashboard);

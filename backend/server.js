@@ -52,7 +52,34 @@ app.post('/api/compras/rapida', async (req, res) => { let transaction; try { con
 app.get('/api/clientes', async (req, res) => { try { let pool = await poolPromise; let nombre = req.query.nombre; if(nombre) { let result = await pool.request().input('nombre', sql.VarChar, `%${nombre}%`).query('SELECT * FROM clientes WHERE nombre LIKE @nombre AND activo = 1'); res.json(result.recordset); } else { let result = await pool.request().query('SELECT * FROM clientes WHERE activo = 1'); res.json(result.recordset); } } catch (err) { res.status(500).send(err.message); } });
 app.post('/api/clientes', async (req, res) => { try { let pool = await poolPromise; let result = await pool.request().input('nombre', sql.VarChar, req.body.nombre).input('telefono', sql.VarChar, req.body.telefono || null).query('INSERT INTO clientes (nombre, telefono) OUTPUT INSERTED.id VALUES (@nombre, @telefono)'); res.status(201).json({ id: result.recordset[0].id }); } catch (err) { res.status(500).send(err.message); } });
 app.get('/api/ventas', async (req, res) => { try { let pool = await poolPromise; let result = await pool.request().query("SELECT v.id, v.fecha, v.total, ISNULL(c.nombre, 'Consumidor Final') as cliente, ISNULL(e.nombre, 'Admin/Sistema') as empleado FROM Ventas v LEFT JOIN Clientes c ON v.cliente_id = c.id LEFT JOIN Empleados e ON v.empleado_id = e.id ORDER BY v.fecha DESC"); res.json(result.recordset); } catch (err) { res.status(500).send(err.message); } });
-app.post('/api/ventas', async (req, res) => { let transaction; try { const { cliente_id, empleado_id, total, detalles } = req.body; let pool = await poolPromise; transaction = new sql.Transaction(pool); await transaction.begin(); const reqCab = new sql.Request(transaction); let resCab = await reqCab.input('cliente_id', sql.Int, cliente_id || null).input('empleado_id', sql.Int, empleado_id || null).input('total', sql.Int, total).query('INSERT INTO Ventas (cliente_id, empleado_id, total) OUTPUT INSERTED.id VALUES (@cliente_id, @empleado_id, @total)'); const nuevaVentaId = resCab.recordset[0].id; for (let item of detalles) { const reqDet = new sql.Request(transaction); await reqDet.input('venta_id', sql.Int, nuevaVentaId).input('producto_id', sql.Int, item.producto_id).input('cantidad', sql.Int, item.cantidad).input('precio_unitario', sql.Int, item.precio_unitario).input('subtotal', sql.Int, item.subtotal).query('INSERT INTO Ventas_Detalle (venta_id, producto_id, cantidad, precio_unitario, subtotal) VALUES (@venta_id, @producto_id, @cantidad, @precio_unitario, @subtotal)'); const reqRestarStock = new sql.Request(transaction); await reqRestarStock.input('p_id', sql.Int, item.producto_id).input('cant', sql.Int, item.cantidad).query('UPDATE Productos SET stock = ISNULL(stock, 0) - @cant WHERE id = @p_id'); } await transaction.commit(); res.status(201).json({ id: nuevaVentaId }); } catch (err) { if (transaction) await transaction.rollback(); res.status(500).send(err.message); } });
+
+// ======== AQUI ESTÁ EL ARREGLO DEL TRIGGER ========
+app.post('/api/ventas', async (req, res) => { 
+  let transaction; 
+  try { 
+    const { cliente_id, empleado_id, total, detalles } = req.body; 
+    let pool = await poolPromise; 
+    transaction = new sql.Transaction(pool); 
+    await transaction.begin(); 
+    
+    const reqCab = new sql.Request(transaction); 
+    let resCab = await reqCab.input('cliente_id', sql.Int, cliente_id || null).input('empleado_id', sql.Int, empleado_id || null).input('total', sql.Int, total).query('INSERT INTO Ventas (cliente_id, empleado_id, total) OUTPUT INSERTED.id VALUES (@cliente_id, @empleado_id, @total)'); 
+    const nuevaVentaId = resCab.recordset[0].id; 
+    
+    for (let item of detalles) { 
+      const reqDet = new sql.Request(transaction); 
+      await reqDet.input('venta_id', sql.Int, nuevaVentaId).input('producto_id', sql.Int, item.producto_id).input('cantidad', sql.Int, item.cantidad).input('precio_unitario', sql.Int, item.precio_unitario).input('subtotal', sql.Int, item.subtotal).query('INSERT INTO Ventas_Detalle (venta_id, producto_id, cantidad, precio_unitario, subtotal) VALUES (@venta_id, @producto_id, @cantidad, @precio_unitario, @subtotal)'); 
+      // ELIMINADO EL UPDATE MANUAL: El Trigger trg_DescontarVitrinaVenta ya se encarga de esto.
+    } 
+    await transaction.commit(); 
+    res.status(201).json({ id: nuevaVentaId }); 
+  } catch (err) { 
+    if (transaction) await transaction.rollback(); 
+    res.status(500).send(err.message); 
+  } 
+});
+// ===================================================
+
 app.get('/api/ventas/:id/detalles', async (req, res) => { try { let pool = await poolPromise; let result = await pool.request().input('id', sql.Int, req.params.id).query('SELECT dv.cantidad, p.nombre, dv.subtotal FROM Ventas_Detalle dv INNER JOIN productos p ON dv.producto_id = p.id WHERE dv.venta_id = @id'); res.json(result.recordset); } catch (err) { res.status(500).send(err.message); } });
 
 // --- DASHBOARD Y REPORTES ---
