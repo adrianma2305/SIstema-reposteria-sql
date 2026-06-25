@@ -1,7 +1,7 @@
 // --- FUNCIONES GLOBALES ELEGANTES PARA NOTIFICACIONES ---
 window.mostrarNotificacion = function(titulo, mensaje, tipo = 'info') {
   const modalEl = document.getElementById("modalNotificacion");
-  if (!modalEl) return alert(titulo + ": " + mensaje); // Fallback por si acaso
+  if (!modalEl) return alert(titulo + ": " + mensaje);
 
   const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
   const icon = document.getElementById("notif-icon");
@@ -11,15 +11,10 @@ window.mostrarNotificacion = function(titulo, mensaje, tipo = 'info') {
   titleEl.innerText = titulo;
   textEl.innerText = mensaje;
 
-  if (tipo === 'success') {
-    icon.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
-  } else if (tipo === 'error') {
-    icon.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i>';
-  } else if (tipo === 'warning') {
-    icon.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-warning"></i>';
-  } else {
-    icon.innerHTML = '<i class="bi bi-info-circle-fill text-primary"></i>';
-  }
+  if (tipo === 'success') { icon.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>'; } 
+  else if (tipo === 'error') { icon.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i>'; } 
+  else if (tipo === 'warning') { icon.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-warning"></i>'; } 
+  else { icon.innerHTML = '<i class="bi bi-info-circle-fill text-primary"></i>'; }
   modal.show();
 };
 
@@ -32,7 +27,7 @@ window.mostrarConfirmacion = function(mensaje, callback) {
   
   const btnConfirmar = document.getElementById("btn-confirmar-accion");
   const newBtn = btnConfirmar.cloneNode(true);
-  btnConfirmar.parentNode.replaceChild(newBtn, newBtn);
+  btnConfirmar.parentNode.replaceChild(newBtn, btnConfirmar); // <--- AQUI ESTABA EL ERROR MORTAL
   
   newBtn.addEventListener('click', () => {
     modal.hide();
@@ -60,9 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   function ocultarTodasLasSecciones() {
-    Object.values(secciones).forEach(seccion => {
-      if (seccion) seccion.style.display = "none";
-    });
+    Object.values(secciones).forEach(seccion => { if (seccion) seccion.style.display = "none"; });
     document.querySelectorAll(".nav-links li a").forEach(a => a.classList.remove("active"));
   }
 
@@ -112,29 +105,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // =========================================================
-  // SOLUCIÓN: Eventos para los botones de acciones rápidas
-  // =========================================================
+  // Eventos para botones de acciones rápidas
   const btnAccionVender = document.getElementById("btn-accion-vender");
   const btnAccionAgregar = document.getElementById("btn-accion-agregar");
   const btnAccionProveedores = document.getElementById("btn-accion-proveedores");
 
-  // Al hacer clic en la tarjeta, simulamos un clic en el menú lateral correspondiente
-  if (btnAccionVender) {
-    btnAccionVender.addEventListener("click", () => {
-      if (botonesNav.ventas) botonesNav.ventas.click();
-    });
-  }
-
-  if (btnAccionAgregar) {
-    btnAccionAgregar.addEventListener("click", () => {
-      if (botonesNav.productos) botonesNav.productos.click();
-    });
-  }
-
-  if (btnAccionProveedores) {
-    btnAccionProveedores.addEventListener("click", () => {
-      if (botonesNav.proveedores) botonesNav.proveedores.click();
-    });
-  }
+  if (btnAccionVender) btnAccionVender.addEventListener("click", () => { if (botonesNav.ventas) botonesNav.ventas.click(); });
+  if (btnAccionAgregar) btnAccionAgregar.addEventListener("click", () => { if (botonesNav.productos) botonesNav.productos.click(); });
+  if (btnAccionProveedores) btnAccionProveedores.addEventListener("click", () => { if (botonesNav.proveedores) botonesNav.proveedores.click(); });
 });

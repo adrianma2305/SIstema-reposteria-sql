@@ -16,7 +16,10 @@ function renderizarGridVentas(productos) {
   if (!grid) return;
   grid.innerHTML = "";
   
-  productos.forEach(p => {
+  // AQUI FILTRAMOS PARA QUE EL CAJERO NO VEA PRODUCTOS BORRADOS/INACTIVOS
+  const activos = productos.filter(p => p.activo !== false && p.activo !== 0);
+
+  activos.forEach(p => {
     const agotado = p.stock <= 0;
     const cardClass = agotado ? "bg-light text-muted border-danger" : "border-primary cursor-pointer";
     const opacity = agotado ? "opacity-50" : "";
@@ -232,7 +235,10 @@ window.abrirCorteCaja = async function() {
 
 document.getElementById("busqueda-venta-productos")?.addEventListener("input", function(e) {
   const val = e.target.value.toLowerCase();
-  renderizarGridVentas(productosVenta.filter(p => p.nombre.toLowerCase().includes(val)));
+  
+  // AQUI TAMBIÉN SE FILTRAN LOS INACTIVOS AL BUSCAR POR NOMBRE
+  const activos = productosVenta.filter(p => p.activo !== false && p.activo !== 0);
+  renderizarGridVentas(activos.filter(p => p.nombre.toLowerCase().includes(val)));
 });
 
 document.getElementById("btn-ir-ventas")?.addEventListener("click", () => { cargarCatVentas(); });
