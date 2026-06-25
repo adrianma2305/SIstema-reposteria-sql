@@ -51,3 +51,21 @@ async function agregarProveedor(event) { event.preventDefault(); const nombre = 
 async function abrirEditarProveedor(id) { try { const respuesta = await fetch(`${API_URL_PROV}/proveedores/${id}`); const proveedor = await respuesta.json(); document.getElementById("edit-id-proveedor").value = proveedor.id; document.getElementById("edit-nombre-proveedor").value = proveedor.nombre; document.getElementById("edit-telefono-proveedor").value = proveedor.telefono || ""; document.getElementById("edit-entrega-proveedor").value = proveedor.entrega ? proveedor.entrega.split('T')[0] : ""; new bootstrap.Modal(document.getElementById("modalEditarProveedor")).show(); } catch (error) {} }
 async function actualizarProveedor(event) { event.preventDefault(); const id = document.getElementById("edit-id-proveedor").value; const nombre = document.getElementById("edit-nombre-proveedor").value.trim(); const telefono = document.getElementById("edit-telefono-proveedor").value.trim(); const entrega = document.getElementById("edit-entrega-proveedor").value; try { await fetch(`${API_URL_PROV}/proveedores/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, telefono, entrega }) }); bootstrap.Modal.getInstance(document.getElementById("modalEditarProveedor")).hide(); cargarProveedores(); } catch (error) {} }
 document.getElementById("busqueda-proveedores").addEventListener("input", filtrarProveedores); document.getElementById("form-agregar-proveedor").addEventListener("submit", agregarProveedor); document.getElementById("form-editar-proveedor").addEventListener("submit", actualizarProveedor);
+// ========================================================
+// VALIDACIONES EN TIEMPO REAL (PROVEEDORES)
+// ========================================================
+
+// Validar Teléfono (8 dígitos exactos)
+['telefono-proveedor', 'edit-telefono-proveedor'].forEach(id => {
+    document.getElementById(id)?.addEventListener("input", function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        if (this.value.length > 8) this.value = this.value.slice(0, 8);
+    });
+});
+
+// Limitar longitud de los nombres
+['nombre-proveedor', 'edit-nombre-proveedor'].forEach(id => {
+    document.getElementById(id)?.addEventListener("input", function() {
+        if (this.value.length > 50) this.value = this.value.slice(0, 50);
+    });
+});

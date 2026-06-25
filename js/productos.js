@@ -541,3 +541,35 @@ document.getElementById("busqueda-productos").addEventListener("input", filtrarP
 document.getElementById("busqueda-precio").addEventListener("input", filtrarProductos); 
 document.getElementById("filtro-categoria").addEventListener("change", filtrarProductos); 
 document.getElementById("form-agregar").addEventListener("submit", agregarProducto);
+// ========================================================
+// VALIDACIONES EN TIEMPO REAL (PRODUCTOS)
+// ========================================================
+
+// Validar Precio (Agregar y Editar)
+['precio', 'edit-precio'].forEach(id => {
+    document.getElementById(id)?.addEventListener("input", function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        if (this.value.length > 6) this.value = this.value.slice(0, 6);
+    });
+});
+
+// Validar Cantidad a Hornear (Enteros)
+document.getElementById("cant-produccion")?.addEventListener("input", function() {
+    this.value = this.value.replace(/[^0-9]/g, '');
+    if (this.value.length > 4) this.value = this.value.slice(0, 4);
+});
+
+// Validar Cantidad de Insumo en Receta (Permite 1 punto decimal)
+document.getElementById("insumo-receta-cantidad")?.addEventListener("input", function() {
+    this.value = this.value.replace(/[^0-9.]/g, '');
+    if ((this.value.match(/\./g) || []).length > 1) {
+        this.value = this.value.replace(/\.+$/, "");
+    }
+});
+
+// Limitar longitud de los nombres
+['nombre', 'edit-nombre'].forEach(id => {
+    document.getElementById(id)?.addEventListener("input", function() {
+        if (this.value.length > 50) this.value = this.value.slice(0, 50);
+    });
+});

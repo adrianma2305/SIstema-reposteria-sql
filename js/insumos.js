@@ -114,3 +114,30 @@ document.getElementById("modalAgregarInsumo")?.addEventListener("show.bs.modal",
 document.getElementById("calc-insumo")?.addEventListener("change", calcularReceta);
 document.getElementById("calc-rendimiento")?.addEventListener("input", calcularReceta);
 document.getElementById("calc-meta")?.addEventListener("input", calcularReceta);
+
+// ========================================================
+// VALIDACIONES EN TIEMPO REAL (INSUMOS)
+// ========================================================
+
+// Validar Precio Costo (Agregar y Editar)
+['precio-insumo', 'edit-precio-insumo'].forEach(id => {
+    document.getElementById(id)?.addEventListener("input", function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        if (this.value.length > 6) this.value = this.value.slice(0, 6);
+    });
+});
+
+// Validar Cantidad en Compras (Permite 1 punto decimal)
+document.getElementById("compra-cantidad")?.addEventListener("input", function() {
+    this.value = this.value.replace(/[^0-9.]/g, '');
+    if ((this.value.match(/\./g) || []).length > 1) {
+        this.value = this.value.replace(/\.+$/, "");
+    }
+});
+
+// Limitar longitud de los nombres
+['nombre-insumo', 'edit-nombre-insumo'].forEach(id => {
+    document.getElementById(id)?.addEventListener("input", function() {
+        if (this.value.length > 50) this.value = this.value.slice(0, 50);
+    });
+});
