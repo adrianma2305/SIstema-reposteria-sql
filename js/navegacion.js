@@ -111,4 +111,30 @@ document.addEventListener("DOMContentLoaded", () => {
       if (typeof cargarTablaUsuariosAdmin === 'function') cargarTablaUsuariosAdmin();
     });
   }
+
+  // =========================================================
+  // SOLUCIÓN: Eventos para los botones de acciones rápidas
+  // =========================================================
+  const btnAccionVender = document.getElementById("btn-accion-vender");
+  const btnAccionAgregar = document.getElementById("btn-accion-agregar");
+  const btnAccionProveedores = document.getElementById("btn-accion-proveedores");
+
+  // Al hacer clic en la tarjeta, simulamos un clic en el menú lateral correspondiente
+  if (btnAccionVender) {
+    btnAccionVender.addEventListener("click", () => {
+      if (botonesNav.ventas) botonesNav.ventas.click();
+    });
+  }
+
+  if (btnAccionAgregar) {
+    btnAccionAgregar.addEventListener("click", () => {
+      if (botonesNav.productos) botonesNav.productos.click();
+    });
+  }
+
+  if (btnAccionProveedores) {
+    btnAccionProveedores.addEventListener("click", () => {
+      if (botonesNav.proveedores) botonesNav.proveedores.click();
+    });
+  }
 });
