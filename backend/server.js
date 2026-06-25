@@ -3,7 +3,14 @@ const sql = require('mssql');
 const cors = require('cors');
 
 const app = express();
-app.use(cors()); 
+
+// --- CONFIGURACION CORS BLINDADA ---
+app.use(cors({
+    origin: '*', 
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
 const dbConfig = { user: 'adminsory', password: 'sep.23059', server: 'servidor-adrian.database.windows.net', database: 'PasteleriaDB', options: { encrypt: true, trustServerCertificate: false, connectTimeout: 30000 } };
