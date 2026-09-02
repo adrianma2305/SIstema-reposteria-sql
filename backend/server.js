@@ -13,7 +13,7 @@ app.use(cors({
 
 app.use(express.json());
 
-const dbConfig = { user: 'adminsory', password: 'sep.23059', server: 'servidor-adrian.database.windows.net', database: 'PasteleriaDB', options: { encrypt: true, trustServerCertificate: false, connectTimeout: 30000 } };
+const dbConfig = { user: 'adminsory', password: 'sep.2311', server: 'servidor-adrian.database.windows.net', database: 'reposteria_sorydb', options: { encrypt: true, trustServerCertificate: false, connectTimeout: 30000 } };
 const poolPromise = sql.connect(dbConfig).then(pool => { console.log("🚀 Azure SQL OK!"); return pool; }).catch(err => { console.log("❌ Error:", err.message); });
 
 // EMPLEADOS
