@@ -66,10 +66,13 @@ async function inicializarSistemaConLogin() {
 
     // Si no hay sesión, mostrar el modal de Login
     const modalElement = document.getElementById("modalLoginInicio");
+    if (!modalElement) {
+        console.error("FATAL: El HTML no se actualizó, falta el modal de Login.");
+        return;
+    }
     let modalLogin = bootstrap.Modal.getOrCreateInstance(modalElement);
+    
     const select = document.getElementById("login-usuario");
-
-    select.innerHTML = "<option value='' selected disabled>Selecciona tu usuario...</option>";
 
     try {
         const resEmp = await fetch(`${API_URL_USUARIOS}/empleados`);
@@ -173,7 +176,14 @@ async function hashPassword(password) {
 // LOGOUT Y GESTIÓN DE PERFILES
 // ==========================================
 window.abrirModalUsuarios = function() {
-    bootstrap.Modal.getOrCreateInstance(document.getElementById("modalConfirmarLogout")).show();
+    const modalEl = document.getElementById("modalConfirmarLogout");
+    
+    if (!modalEl) {
+        alert("⚠️ Error: El navegador sigue usando una versión vieja de la página. Por favor recarga limpiando el caché (Ctrl + F5).");
+        return; 
+    }
+    
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
 };
 
 window.ejecutarLogout = function() {
