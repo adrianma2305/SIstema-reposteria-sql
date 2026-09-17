@@ -203,7 +203,7 @@ function abrirRecibo(id, cliente, empleado, detalles, total, fechaStr = null) {
     `);
   });
 
-  new bootstrap.Modal(document.getElementById("modalRecibo")).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("modalRecibo")).show();
 }
 
 window.abrirCorteCaja = async function() {
@@ -232,7 +232,7 @@ window.abrirCorteCaja = async function() {
             hCaja.classList.add("text-success");
         }
 
-        new bootstrap.Modal(document.getElementById("modalCorteCaja")).show();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById("modalCorteCaja")).show();
     } catch (error) {
         mostrarNotificacion("Espera un momento", error.message, "warning");
     }

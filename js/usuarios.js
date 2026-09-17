@@ -66,7 +66,7 @@ async function inicializarSistemaConLogin() {
 
     // Si no hay sesión, mostrar el modal de Login
     const modalElement = document.getElementById("modalLoginInicio");
-    let modalLogin = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement, { backdrop: 'static', keyboard: false });
+    let modalLogin = bootstrap.Modal.getOrCreateInstance(modalElement);
     const select = document.getElementById("login-usuario");
 
     select.innerHTML = "<option value='' selected disabled>Selecciona tu usuario...</option>";
@@ -173,7 +173,7 @@ async function hashPassword(password) {
 // LOGOUT Y GESTIÓN DE PERFILES
 // ==========================================
 window.abrirModalUsuarios = function() {
-    new bootstrap.Modal(document.getElementById("modalConfirmarLogout")).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("modalConfirmarLogout")).show();
 };
 
 window.ejecutarLogout = function() {
@@ -187,7 +187,7 @@ window.ejecutarLogout = function() {
 window.abrirModalAgregarUsuario = function () {
     const form = document.getElementById("form-agregar-usuario");
     if (form) form.reset();
-    new bootstrap.Modal(document.getElementById("modalAgregarUsuario")).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("modalAgregarUsuario")).show();
 };
 
 document.getElementById("form-agregar-usuario")?.addEventListener("submit", async function (e) {
@@ -212,7 +212,7 @@ document.getElementById("form-agregar-usuario")?.addEventListener("submit", asyn
         if (!respuesta.ok) throw new Error("Error del servidor");
 
         mostrarNotificacion("Completado", "Nuevo usuario del sistema creado.", "success");
-        bootstrap.Modal.getInstance(document.getElementById("modalAgregarUsuario")).hide();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById("modalAgregarUsuario")).hide();
         cargarTablaUsuariosAdmin();
     } catch (error) {
         mostrarNotificacion("Fallo", "El servidor denegó la creación.", "error");
@@ -228,7 +228,7 @@ window.abrirEditarUsuario = function(id) {
     document.getElementById("edit-cargo-usuario").value = emp.cargo || '';
     document.getElementById("edit-contrasea-usuario").value = '';
 
-    new bootstrap.Modal(document.getElementById("modalEditarUsuario")).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("modalEditarUsuario")).show();
 };
 
 document.getElementById("form-editar-usuario")?.addEventListener("submit", async function(e) {
@@ -257,7 +257,7 @@ document.getElementById("form-editar-usuario")?.addEventListener("submit", async
         if (!res.ok) throw new Error();
 
         mostrarNotificacion("Actualizado", "Modificaciones guardadas.", "success");
-        bootstrap.Modal.getInstance(document.getElementById("modalEditarUsuario")).hide();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById("modalEditarUsuario")).hide();
 
         if (usuarioActual && usuarioActual.id == id) {
             usuarioActual.nombre = nombre;
@@ -395,7 +395,7 @@ window.iniciarRecuperacion = function() {
     }
 
     // Si pasó, entonces sí mostramos la ventana
-    new bootstrap.Modal(document.getElementById("modalRecuperarPass")).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("modalRecuperarPass")).show();
 };
 
 document.getElementById("form-recuperar-pass")?.addEventListener("submit", async function(e) {
@@ -425,7 +425,7 @@ document.getElementById("form-recuperar-pass")?.addEventListener("submit", async
 
         if (res.ok) {
             mostrarNotificacion("Desbloqueado", "Tu nueva contraseña fue asignada con éxito.", "success");
-            bootstrap.Modal.getInstance(document.getElementById("modalRecuperarPass")).hide();
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("modalRecuperarPass")).hide();
             document.getElementById("form-recuperar-pass").reset();
         } else {
             throw new Error("Respuesta no OK del servidor");
