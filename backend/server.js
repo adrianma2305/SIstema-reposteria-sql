@@ -71,4 +71,66 @@ app.get('/api/reportes/financiero', async (req, res) => { try { let pool = await
 app.get('/api/reportes/mensual', async (req, res) => { try { let pool = await poolPromise; let result = await pool.request().query(`SELECT RIGHT('0' + CAST(MONTH(fecha) AS VARCHAR(2)), 2) + '-' + CAST(YEAR(fecha) AS VARCHAR(4)) as mes, COUNT(id) as total_tickets, ISNULL(SUM(total), 0) as total_ganado FROM Ventas WHERE activo = 1 AND fecha IS NOT NULL GROUP BY YEAR(fecha), MONTH(fecha) ORDER BY YEAR(fecha) DESC, MONTH(fecha) DESC`); res.json(result.recordset); } catch (err) { res.status(500).send(err.message); } });
 app.get('/api/reportes/corte-caja', async (req, res) => { try { let pool = await poolPromise; let rVentas = await pool.request().query("SELECT ISNULL(SUM(total), 0) as v FROM Ventas WHERE CAST(fecha as DATE) = CAST(GETDATE() as DATE)"); let rCompras = await pool.request().query("SELECT ISNULL(SUM(total_factura), 0) as c FROM Compras_Proveedores WHERE CAST(fecha_compra as DATE) = CAST(GETDATE() as DATE) AND estado_pago = 'PAGADO'"); let ventas = rVentas.recordset[0].v; let gastos = rCompras.recordset[0].c; res.json({ ventas: ventas, gastos: gastos, caja: (ventas - gastos) }); } catch(e) { res.status(500).send(e.message); } });
 
+// ==========================================
+// MÓDULO CONTABLE, FINANCIERO Y FISCAL (DGI)
+// ==========================================
+
+// 1. Registrar Gastos Operativos (Luz, Agua, Salarios)
+app.post('/api/gastos', async (req, res) => {
+    try {
+        const { tipo_gasto, descripcion, monto_total, porcentaje_negocio, fecha } = req.body;
+        let pool = await poolPromise;
+        await pool.request()
+            .input('tipo', sql.VarChar, tipo_gasto)
+            .input('desc', sql.VarChar, descripcion)
+            .input('monto', sql.Decimal(10,2), monto_total)
+            .input('porc', sql.Decimal(5,2), porcentaje_negocio)
+            .input('fecha', sql.Date, fecha)
+            .query('INSERT INTO Gastos_Operativos (tipo_gasto, descripcion, monto_total, porcentaje_negocio, fecha) VALUES (@tipo, @desc, @monto, @porc, @fecha)');
+        res.status(201).json({ success: true });
+    } catch (err) { res.status(500).send(err.message); }
+});
+
+// 2. Generar Estado de Resultados y Declaratoria de Impuestos
+app.get('/api/reportes/estado-financiero', async (req, res) => {
+    try {
+        let pool = await poolPromise;
+        const mes = req.query.mes || new Date().getMonth() + 1;
+        const anio = req.query.anio || new Date().getFullYear();
+
+        // A. Ingresos Totales y Costo de Ventas (Basado en recetas)
+        let qVentas = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
+            .query(`SELECT ISNULL(SUM(v.total), 0) as ingresos, 
+                           ISNULL(SUM(vd.cantidad * ISNULL((SELECT SUM(rd.cantidad_necesaria * i.precio) 
+                           FROM Recetas_Detalle rd JOIN Insumos i ON rd.insumo_id = i.id 
+                           WHERE rd.producto_id = vd.producto_id AND rd.activo=1), 0)), 0) as costo_ventas 
+                    FROM Ventas v JOIN Ventas_Detalle vd ON v.id = vd.venta_id 
+                    WHERE MONTH(v.fecha) = @mes AND YEAR(v.fecha) = @anio`);
+        
+        let ingresos = parseFloat(qVentas.recordset[0].ingresos);
+        let costo_ventas = parseFloat(qVentas.recordset[0].costo_ventas);
+        let utilidad_bruta = ingresos - costo_ventas;
+
+        // B. Gastos Operativos (CIF prorrateados)
+        let qGastos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
+            .query(`SELECT ISNULL(SUM(monto_deducible), 0) as total_cif FROM Gastos_Operativos WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio AND activo = 1`);
+        
+        let cif = parseFloat(qGastos.recordset[0].total_cif);
+        let utilidad_neta_antes = utilidad_bruta - cif;
+
+        // C. Cálculos Fiscales DGI (IVA 15% e IR Anticipo 1% para MIPYMES)
+        let iva_debito = ingresos * 0.15; 
+        let ir_mensual = ingresos * 0.01; // Anticipo IR 1% sobre ventas brutas mensuales
+        
+        let utilidad_liquida = utilidad_neta_antes - ir_mensual;
+
+        res.json({ 
+            mes, anio, ingresos, costo_ventas, utilidad_bruta, 
+            gastos_operativos: cif, utilidad_neta_antes, 
+            impuestos: { iva_debito, ir_mensual }, 
+            utilidad_liquida 
+        });
+    } catch (err) { res.status(500).send(err.message); }
+});
+
 app.listen(3000, () => console.log('Servidor corriendo en el puerto 3000'));
