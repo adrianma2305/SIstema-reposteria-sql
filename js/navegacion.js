@@ -54,9 +54,9 @@ document.addEventListener("DOMContentLoaded", () => {
     usuarios: document.getElementById("seccion-usuarios")
   };
 
-  // SOLUCIÓN: Limpieza universal dinámica. Oculta cualquier <section> dentro del <main>
+  // SOLUCIÓN DEFINITIVA: Oculta cualquier elemento cuyo ID empiece con "seccion-"
   function ocultarTodasLasSecciones() {
-    document.querySelectorAll("main > section").forEach(sec => {
+    document.querySelectorAll("[id^='seccion-']").forEach(sec => {
         sec.style.display = "none";
     });
     document.querySelectorAll(".nav-links li a").forEach(a => {
@@ -110,7 +110,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Eventos para botones de acciones rápidas
   const btnAccionVender = document.getElementById("btn-accion-vender");
   const btnAccionAgregar = document.getElementById("btn-accion-agregar");
   const btnAccionProveedores = document.getElementById("btn-accion-proveedores");

@@ -1,15 +1,13 @@
-// ==========================================
-// LÓGICA DEL MÓDULO CONTABLE Y FISCAL (FORMATO DGI)
-// Archivo: js/finanzas.js
-// ==========================================
-
 const API_URL_FIN = "https://sistema-pasteleria-sql.onrender.com/api"; 
 
 // 1. Navegación: Mostrar la pantalla de finanzas al hacer clic en el menú
 document.getElementById('btn-ir-finanzas')?.addEventListener('click', (e) => {
     e.preventDefault();
     
-    document.querySelectorAll('main > section').forEach(sec => sec.style.display = 'none');
+    // LA MISMA SOLUCIÓN AQUÍ: Ocultar todo lo que empiece con "seccion-"
+    document.querySelectorAll("[id^='seccion-']").forEach(sec => {
+        sec.style.display = 'none';
+    });
     
     const seccionFinanzas = document.getElementById('seccion-finanzas');
     if (seccionFinanzas) seccionFinanzas.style.display = 'block';
