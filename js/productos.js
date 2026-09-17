@@ -133,7 +133,7 @@ async function abrirModalProduccion() {
         document.getElementById('cant-produccion').value = '';
         document.getElementById('fecha-vencimiento-prod').value = '';
         
-        const modal = new bootstrap.Modal(document.getElementById('modalProduccion'));
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalProduccion'));
         modal.show();
     } catch (error) {
         console.error("Error al cargar productos para producción:", error);
@@ -168,7 +168,7 @@ window.ejecutarProduccion = async function(event) {
 
         if(respuesta.ok) {
             alert(`¡Producción registrada! Se agregaron ${cantidad_producida} unidades a la vitrina.`);
-            bootstrap.Modal.getInstance(document.getElementById('modalProduccion')).hide();
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalProduccion')).hide();
             document.getElementById('form-produccion').reset();
             cargarProductos(); // Recargar la tabla
         } else {
