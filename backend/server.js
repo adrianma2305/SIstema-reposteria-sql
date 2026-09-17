@@ -383,4 +383,81 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
+// ==========================================
+// MÓDULO DE USUARIOS / EMPLEADOS (LOGIN)
+// ==========================================
+
+app.get('/api/empleados', async (req, res) => {
+    try {
+        let pool = await poolPromise;
+        let result = await pool.request().query('SELECT id, nombre, cargo, activo FROM Empleados ORDER BY nombre');
+        res.json(result.recordset);
+    } catch (err) { res.status(500).send(err.message); }
+});
+
+app.get('/api/empleados/:id', async (req, res) => {
+    try {
+        let pool = await poolPromise;
+        let result = await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query('SELECT id, nombre, cargo, activo, contraseña FROM Empleados WHERE id = @id');
+        if (result.recordset.length > 0) {
+            res.json(result.recordset[0]);
+        } else {
+            res.status(404).send('Usuario no encontrado');
+        }
+    } catch (err) { res.status(500).send(err.message); }
+});
+
+app.post('/api/empleados', async (req, res) => {
+    try {
+        const { nombre, cargo, contraseña } = req.body;
+        let pool = await poolPromise;
+        await pool.request()
+            .input('nombre', sql.VarChar, nombre)
+            .input('cargo', sql.VarChar, cargo)
+            .input('pass', sql.VarChar, contraseña)
+            .query('INSERT INTO Empleados (nombre, cargo, contraseña) VALUES (@nombre, @cargo, @pass)');
+        res.status(201).send('OK');
+    } catch (err) { res.status(500).send(err.message); }
+});
+
+app.put('/api/empleados/:id', async (req, res) => {
+    try {
+        const { nombre, cargo, password, es_recuperacion } = req.body;
+        let pool = await poolPromise;
+        let request = pool.request().input('id', sql.Int, req.params.id);
+
+        if (es_recuperacion || password) {
+            request.input('pass', sql.VarChar, password);
+            if (nombre && cargo) {
+                request.input('nombre', sql.VarChar, nombre).input('cargo', sql.VarChar, cargo);
+                await request.query('UPDATE Empleados SET nombre = @nombre, cargo = @cargo, contraseña = @pass WHERE id = @id');
+            } else {
+                await request.query('UPDATE Empleados SET contraseña = @pass WHERE id = @id');
+            }
+        } else {
+            request.input('nombre', sql.VarChar, nombre).input('cargo', sql.VarChar, cargo);
+            await request.query('UPDATE Empleados SET nombre = @nombre, cargo = @cargo WHERE id = @id');
+        }
+        res.status(200).send('OK');
+    } catch (err) { res.status(500).send(err.message); }
+});
+
+app.delete('/api/empleados/:id', async (req, res) => {
+    try {
+        let pool = await poolPromise;
+        await pool.request().input('id', sql.Int, req.params.id).query('UPDATE Empleados SET activo = 0 WHERE id = @id');
+        res.status(200).send('OK');
+    } catch (err) { res.status(500).send(err.message); }
+});
+
+app.put('/api/empleados/:id/reactivar', async (req, res) => {
+    try {
+        let pool = await poolPromise;
+        await pool.request().input('id', sql.Int, req.params.id).query('UPDATE Empleados SET activo = 1 WHERE id = @id');
+        res.status(200).send('OK');
+    } catch (err) { res.status(500).send(err.message); }
+});
+
 app.listen(3000, () => console.log('✅ Servidor corriendo en el puerto 3000'));
