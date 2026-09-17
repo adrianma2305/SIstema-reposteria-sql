@@ -143,100 +143,100 @@
       </section>
 
       <section id="seccion-finanzas" style="display: none">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="m-0">Gestión Contable y Fiscal</h2>
-    <button class="btn btn-dark fw-bold shadow-sm" onclick="cargarEstadoFinanciero()">
-      <i class="bi bi-arrow-clockwise"></i> Actualizar Reporte
-    </button>
-  </div>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h2 class="m-0">Gestión Contable y Fiscal</h2>
+          <button class="btn btn-dark fw-bold shadow-sm" onclick="cargarEstadoFinanciero()">
+            <i class="bi bi-arrow-clockwise"></i> Actualizar Reporte
+          </button>
+        </div>
 
-  <div class="row">
-    <!-- Formulario de Gastos CIF (Prorrateo) -->
-    <div class="col-md-4 mb-4">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-primary text-white fw-bold">Registrar Gasto (Agua, Luz, Nómina)</div>
-        <div class="card-body">
-          <form id="form-registrar-gasto" onsubmit="guardarGastoCIF(event)">
-            <div class="mb-3">
-              <label class="form-label fw-bold">Tipo de Gasto</label>
-              <select id="gasto-tipo" class="form-select" required>
-                <option value="LUZ">Energía Eléctrica (Luz)</option>
-                <option value="AGUA">Agua Potable</option>
-                <option value="SALARIO">Nómina / Salario</option>
-                <option value="OTROS">Otros Gastos</option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold">Recibo Total (C$)</label>
-              <input type="number" id="gasto-monto" class="form-control" min="1" step="0.01" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold">% Aplicable al Negocio</label>
-              <div class="input-group">
-                <input type="number" id="gasto-porcentaje" class="form-control" min="1" max="100" value="100" required>
-                <span class="input-group-text">%</span>
+        <div class="row">
+          <!-- Formulario de Gastos CIF (Prorrateo) -->
+          <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+              <div class="card-header bg-primary text-white fw-bold">Registrar Gasto (Agua, Luz, Nómina)</div>
+              <div class="card-body">
+                <form id="form-registrar-gasto" onsubmit="guardarGastoCIF(event)">
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">Tipo de Gasto</label>
+                    <select id="gasto-tipo" class="form-select" required>
+                      <option value="LUZ">Energía Eléctrica (Luz)</option>
+                      <option value="AGUA">Agua Potable</option>
+                      <option value="SALARIO">Nómina / Salario</option>
+                      <option value="OTROS">Otros Gastos</option>
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">Recibo Total (C$)</label>
+                    <input type="number" id="gasto-monto" class="form-control" min="1" step="0.01" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">% Aplicable al Negocio</label>
+                    <div class="input-group">
+                      <input type="number" id="gasto-porcentaje" class="form-control" min="1" max="100" value="100" required>
+                      <span class="input-group-text">%</span>
+                    </div>
+                    <small class="text-muted">Ej: Si el recibo es de la casa, pon 40% para deducir legalmente solo la porción de la repostería.</small>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">Fecha del Gasto</label>
+                    <input type="date" id="gasto-fecha" class="form-control" required>
+                  </div>
+                  <button type="submit" class="btn btn-primary w-100 fw-bold">Registrar Gasto</button>
+                </form>
               </div>
-              <small class="text-muted">Ej: Si el recibo es de la casa, pon 40% para deducir legalmente solo la porción de la repostería.</small>
             </div>
-            <div class="mb-3">
-              <label class="form-label fw-bold">Fecha del Gasto</label>
-              <input type="date" id="gasto-fecha" class="form-control" required>
-            </div>
-            <button type="submit" class="btn btn-primary w-100 fw-bold">Registrar Gasto</button>
-          </form>
-        </div>
-      </div>
-    </div>
+          </div>
 
-    <!-- Estado de Resultados y Declaratoria -->
-    <div class="col-md-8 mb-4">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between">
-          <span>Estado de Resultados (Pérdidas y Ganancias)</span>
-          <span id="lbl-mes-fiscal">Mes Actual</span>
-        </div>
-        <div class="card-body p-0">
-          <table class="table table-hover align-middle m-0 fs-5">
-            <tbody>
-              <tr>
-                <td class="ps-4">Ingresos Brutos por Ventas</td>
-                <td class="text-end fw-bold text-success pe-4">C$ <span id="fin-ingresos">0.00</span></td>
-              </tr>
-              <tr>
-                <td class="ps-4">(-) Costo de Materia Prima (Según Recetas)</td>
-                <td class="text-end text-danger pe-4">C$ <span id="fin-costos">0.00</span></td>
-              </tr>
-              <tr class="table-light">
-                <td class="ps-4 fw-bold">UTILIDAD BRUTA</td>
-                <td class="text-end fw-bold pe-4">C$ <span id="fin-util-bruta">0.00</span></td>
-              </tr>
-              <tr>
-                <td class="ps-4">(-) Gastos Operativos (Luz, Agua, Salarios prorrateados)</td>
-                <td class="text-end text-danger pe-4">C$ <span id="fin-cif">0.00</span></td>
-              </tr>
-              <tr class="table-warning">
-                <td class="ps-4 fw-bold">UTILIDAD NETA ANTES DE IMPUESTOS</td>
-                <td class="text-end fw-bold pe-4">C$ <span id="fin-util-antes">0.00</span></td>
-              </tr>
-              <tr>
-                <td class="ps-4">(-) Retención IR DGI (Anticipo 1%)</td>
-                <td class="text-end text-danger pe-4">C$ <span id="fin-ir">0.00</span></td>
-              </tr>
-              <tr class="table-success text-dark">
-                <td class="ps-4 fw-bold fs-4">UTILIDAD LÍQUIDA (Ganancia Real)</td>
-                <td class="text-end fw-bold fs-4 pe-4">C$ <span id="fin-liquida">0.00</span></td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="bg-light p-3 border-top text-center mt-3 mx-3 rounded">
-            <h6 class="fw-bold mb-1">Declaratoria IVA (DGI)</h6>
-            <p class="m-0 small text-muted">Monto total a declarar en formulario de IVA (15% sobre ventas grabadas): <strong class="text-dark fs-5">C$ <span id="fin-iva">0.00</span></strong></p>
+          <!-- Estado de Resultados y Declaratoria -->
+          <div class="col-md-8 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+              <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between">
+                <span>Estado de Resultados (Pérdidas y Ganancias)</span>
+                <span id="lbl-mes-fiscal">Mes Actual</span>
+              </div>
+              <div class="card-body p-0">
+                <table class="table table-hover align-middle m-0 fs-5">
+                  <tbody>
+                    <tr>
+                      <td class="ps-4">Ingresos Brutos por Ventas</td>
+                      <td class="text-end fw-bold text-success pe-4">C$ <span id="fin-ingresos">0.00</span></td>
+                    </tr>
+                    <tr>
+                      <td class="ps-4">(-) Costo de Materia Prima (Según Recetas)</td>
+                      <td class="text-end text-danger pe-4">C$ <span id="fin-costos">0.00</span></td>
+                    </tr>
+                    <tr class="table-light">
+                      <td class="ps-4 fw-bold">UTILIDAD BRUTA</td>
+                      <td class="text-end fw-bold pe-4">C$ <span id="fin-util-bruta">0.00</span></td>
+                    </tr>
+                    <tr>
+                      <td class="ps-4">(-) Gastos Operativos (Luz, Agua, Salarios prorrateados)</td>
+                      <td class="text-end text-danger pe-4">C$ <span id="fin-cif">0.00</span></td>
+                    </tr>
+                    <tr class="table-warning">
+                      <td class="ps-4 fw-bold">UTILIDAD NETA ANTES DE IMPUESTOS</td>
+                      <td class="text-end fw-bold pe-4">C$ <span id="fin-util-antes">0.00</span></td>
+                    </tr>
+                    <tr>
+                      <td class="ps-4">(-) Retención IR DGI (Anticipo 1%)</td>
+                      <td class="text-end text-danger pe-4">C$ <span id="fin-ir">0.00</span></td>
+                    </tr>
+                    <tr class="table-success text-dark">
+                      <td class="ps-4 fw-bold fs-4">UTILIDAD LÍQUIDA (Ganancia Real)</td>
+                      <td class="text-end fw-bold fs-4 pe-4">C$ <span id="fin-liquida">0.00</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="bg-light p-3 border-top text-center mt-3 mx-3 rounded">
+                  <h6 class="fw-bold mb-1">Declaratoria IVA (DGI)</h6>
+                  <p class="m-0 small text-muted">Monto total a declarar en formulario de IVA (15% sobre ventas grabadas): <strong class="text-dark fs-5">C$ <span id="fin-iva">0.00</span></strong></p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
+      </section>
     </main>
 
     <div class="modal fade" id="modalNotificacion" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
@@ -293,28 +293,7 @@
         function imprimirElemento(idElemento) {
             const contenido = document.getElementById(idElemento).innerHTML;
             const v = window.open('', '', 'height=500, width=500');
-            
-            // Usamos backticks (comillas invertidas) para que soporte saltos de línea sin errores
-            v.document.write(`
-                <html>
-                    <head>
-                        <title>Imprimir Ticket</title>
-                        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" />
-                        <style>
-                            body { 
-                                width: 300px; 
-                                font-family: 'Courier New', Courier, monospace; 
-                                font-size: 14px; 
-                                margin: 0 auto; 
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        ${contenido}
-                    </body>
-                </html>
-            `);
-            
+            v.document.write(`<html><head><title>Imprimir Ticket</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" /><style>body { width: 300px; font-family: 'Courier New', Courier, monospace; font-size: 14px; margin: 0 auto; }</style></head><body>${contenido}</body></html>`);
             v.document.close();
             v.focus();
             setTimeout(() => { v.print(); v.close(); }, 500);
@@ -329,8 +308,8 @@
     <script src="js/productos.js"></script>
     <script src="js/ventas.js"></script>
     <script src="js/proveedores.js"></script>
-    
     <script src="js/insumos.js"></script>
     <script src="js/usuarios.js"></script>
+    <script src="js/finanzas.js"></script>
   </body>
 </html>

@@ -56,7 +56,7 @@ app.put('/api/insumos/:id/reactivar', async (req, res) => { try { let pool = awa
 app.get('/api/kardex/:insumo_id', async (req, res) => { try { let pool = await poolPromise; let result = await pool.request().input('id', sql.Int, req.params.insumo_id).query(`SELECT k.*, ISNULL(e.nombre, 'Sistema') as usuario FROM Kardex_Insumos k LEFT JOIN Empleados e ON k.usuario_id = e.id WHERE k.insumo_id = @id ORDER BY k.fecha DESC`); res.json(result.recordset); } catch (err) { res.status(500).send(err.message); } });
 app.post('/api/compras/rapida', async (req, res) => { let transaction; try { const { proveedor_id, insumo_id, cantidad, costo_total, empleado_id, tipo_pago } = req.body; let pool = await poolPromise; transaction = new sql.Transaction(pool); await transaction.begin(); let deudaPendiente = (tipo_pago === 'CONTADO') ? 0 : costo_total; let estadoPago = (tipo_pago === 'CONTADO') ? 'PAGADO' : 'PENDIENTE'; let reqCompra = new sql.Request(transaction); let resCompra = await reqCompra.input('prov_id', sql.Int, proveedor_id).input('total', sql.Int, costo_total).input('estado', sql.VarChar, estadoPago).input('saldo', sql.Int, deudaPendiente).input('emp_id', sql.Int, empleado_id || null).query("INSERT INTO Compras_Proveedores (proveedor_id, total_factura, estado_pago, saldo_pendiente, empleado_id) OUTPUT INSERTED.id VALUES (@prov_id, @total, @estado, @saldo, @emp_id)"); const compraId = resCompra.recordset[0].id; let reqDet = new sql.Request(transaction); await reqDet.input('comp_id', sql.Int, compraId).input('ins_id', sql.Int, insumo_id).input('cant', sql.Decimal(10,4), cantidad).input('sub', sql.Int, costo_total).query("INSERT INTO Compras_Detalle (compra_id, insumo_id, cantidad, precio_unitario, subtotal) VALUES (@comp_id, @ins_id, @cant, 0, @sub)"); let stringMotivo = (tipo_pago === 'CONTADO') ? `Compra al CONTADO Fac #${compraId}` : `Compra al CRÉDITO Fac #${compraId}`; let reqKardex = new sql.Request(transaction); await reqKardex.input('ins_id', sql.Int, insumo_id).input('cant', sql.Decimal(10,4), cantidad).input('emp_id', sql.Int, empleado_id || null).input('motivo', sql.VarChar, stringMotivo).query("INSERT INTO Kardex_Insumos (insumo_id, tipo_movimiento, cantidad, motivo, usuario_id) VALUES (@ins_id, 'ENTRADA', @cant, @motivo, @emp_id)"); await transaction.commit(); res.status(201).json({ success: true }); } catch (err) { if(transaction) await transaction.rollback(); res.status(500).send(err.message); } });
 
-// VENTAS (CON EL FIX DEL TRIGGER DOBLE)
+// VENTAS
 app.get('/api/clientes', async (req, res) => { try { let pool = await poolPromise; let nombre = req.query.nombre; if(nombre) { let result = await pool.request().input('nombre', sql.VarChar, `%${nombre}%`).query('SELECT * FROM clientes WHERE nombre LIKE @nombre AND activo = 1'); res.json(result.recordset); } else { let result = await pool.request().query('SELECT * FROM clientes WHERE activo = 1'); res.json(result.recordset); } } catch (err) { res.status(500).send(err.message); } });
 app.post('/api/clientes', async (req, res) => { try { let pool = await poolPromise; let result = await pool.request().input('nombre', sql.VarChar, req.body.nombre).input('telefono', sql.VarChar, req.body.telefono || null).query('INSERT INTO clientes (nombre, telefono) OUTPUT INSERTED.id VALUES (@nombre, @telefono)'); res.status(201).json({ id: result.recordset[0].id }); } catch (err) { res.status(500).send(err.message); } });
 app.get('/api/ventas', async (req, res) => { try { let pool = await poolPromise; let result = await pool.request().query("SELECT v.id, v.fecha, v.total, ISNULL(c.nombre, 'Consumidor Final') as cliente, ISNULL(e.nombre, 'Admin/Sistema') as empleado FROM Ventas v LEFT JOIN Clientes c ON v.cliente_id = c.id LEFT JOIN Empleados e ON v.empleado_id = e.id ORDER BY v.fecha DESC"); res.json(result.recordset); } catch (err) { res.status(500).send(err.message); } });
@@ -98,7 +98,6 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
         const mes = req.query.mes || new Date().getMonth() + 1;
         const anio = req.query.anio || new Date().getFullYear();
 
-        // A. Ingresos Totales y Costo de Ventas (Basado en recetas)
         let qVentas = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
             .query(`SELECT ISNULL(SUM(v.total), 0) as ingresos, 
                            ISNULL(SUM(vd.cantidad * ISNULL((SELECT SUM(rd.cantidad_necesaria * i.precio) 
@@ -111,16 +110,14 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
         let costo_ventas = parseFloat(qVentas.recordset[0].costo_ventas);
         let utilidad_bruta = ingresos - costo_ventas;
 
-        // B. Gastos Operativos (CIF prorrateados)
         let qGastos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
             .query(`SELECT ISNULL(SUM(monto_deducible), 0) as total_cif FROM Gastos_Operativos WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio AND activo = 1`);
         
         let cif = parseFloat(qGastos.recordset[0].total_cif);
         let utilidad_neta_antes = utilidad_bruta - cif;
 
-        // C. Cálculos Fiscales DGI (IVA 15% e IR Anticipo 1% para MIPYMES)
         let iva_debito = ingresos * 0.15; 
-        let ir_mensual = ingresos * 0.01; // Anticipo IR 1% sobre ventas brutas mensuales
+        let ir_mensual = ingresos * 0.01; 
         
         let utilidad_liquida = utilidad_neta_antes - ir_mensual;
 
