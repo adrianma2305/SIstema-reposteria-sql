@@ -1,33 +1,91 @@
 const API_URL_DASH = "https://sistema-pasteleria-sql.onrender.com/api";
-let chartVentas, chartTop; let datosReporteGlobal = []; let datosMensualGlobal = [];
+let graficoVentasInstance = null;
+let graficoTopInstance = null;
 
-async function cargarDashboard() {
-  try { const resResumen = await fetch(`${API_URL_DASH}/dashboard/resumen`); if (resResumen.ok) { const data = await resResumen.json(); document.getElementById("ventas-dia").innerText = `C$ ${data.dia}`; document.getElementById("ventas-semana").innerText = `C$ ${data.semana}`; document.getElementById("ventas-mes").innerText = `C$ ${data.mes}`; } } catch (error) {}
-  cargarGraficoVentasMes(); cargarGraficoTopProductos();
+async function cargarResumenDashboard() {
+    try {
+        const respuesta = await fetch(`${API_URL_DASH}/dashboard/resumen`);
+        if (!respuesta.ok) throw new Error("Fallo en la API de resumen");
+        const datos = await respuesta.json();
+
+        // Actualización segura de DOM
+        const elDia = document.getElementById("ventas-dia");
+        const elSemana = document.getElementById("ventas-semana");
+        const elMes = document.getElementById("ventas-mes");
+
+        if(elDia) elDia.innerText = `C$ ${parseFloat(datos.dia).toFixed(2)}`;
+        if(elSemana) elSemana.innerText = `C$ ${parseFloat(datos.semana).toFixed(2)}`;
+        if(elMes) elMes.innerText = `C$ ${parseFloat(datos.mes).toFixed(2)}`;
+    } catch (error) {
+        console.warn("Servidor inactivo o cargando resumen:", error);
+    }
 }
 
-async function cargarGraficoVentasMes() { try { const res = await fetch(`${API_URL_DASH}/dashboard/ventas-mes`); const data = await res.json(); const ctx = document.getElementById('grafico-ventas'); if (!ctx) return; if (chartVentas) chartVentas.destroy(); chartVentas = new Chart(ctx, { type: 'line', data: { labels: data.map(d => d.dia), datasets: [{ label: 'Ingresos C$', data: data.map(d => d.total_dia), borderColor: '#ff69b7', backgroundColor: 'rgba(255, 105, 183, 0.2)', borderWidth: 2, fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false } }); } catch (error) {} }
-async function cargarGraficoTopProductos() { try { const res = await fetch(`${API_URL_DASH}/dashboard/top-productos`); const data = await res.json(); const ctx = document.getElementById('grafico-top-productos'); if (!ctx) return; if (chartTop) chartTop.destroy(); chartTop = new Chart(ctx, { type: 'doughnut', data: { labels: data.map(d => d.nombre), datasets: [{ data: data.map(d => d.total_vendido), backgroundColor: ['#ff69b7', '#ff9f43', '#ffc107', '#28c76f', '#20c997'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } }); } catch (error) {} }
+async function cargarGraficoVentasMes() {
+    try {
+        const canvas = document.getElementById('grafico-ventas');
+        if (!canvas) return;
 
-window.abrirReporteCompleto = async function() {
-  const modal = new bootstrap.Modal(document.getElementById("modalReporteProductos")); modal.show();
-  const modalHeader = document.querySelector("#modalReporteProductos .modal-header");
-  if(modalHeader && !document.getElementById("btn-exportar-pdf")) {
-      const btnPdf = document.createElement("button"); btnPdf.id = "btn-exportar-pdf"; btnPdf.className = "btn btn-danger btn-sm ms-auto me-3 fw-bold shadow-sm"; btnPdf.innerHTML = '<i class="bi bi-file-earmark-pdf-fill"></i> Exportar a PDF'; btnPdf.onclick = generarPDFReporte; modalHeader.insertBefore(btnPdf, modalHeader.querySelector(".btn-close"));
-  }
-  const tbody = document.getElementById("tabla-reporte-general-body"); const divMensual = document.getElementById("contenido-reporte-mensual"); tbody.innerHTML = "<tr><td colspan='4' class='text-center'>Cargando desglose...</td></tr>"; divMensual.innerHTML = "<div class='text-center p-4 text-muted'>Calculando...</div>";
-  try { const res = await fetch(`${API_URL_DASH}/reportes/financiero`); const datos = await res.json(); datosReporteGlobal = datos; tbody.innerHTML = ""; if(datos.length === 0) { tbody.innerHTML = "<tr><td colspan='4' class='text-center text-muted'>No hay registros.</td></tr>"; } else { datos.forEach(d => { tbody.insertAdjacentHTML('beforeend', `<tr><td class="fw-bold">${d.producto}</td><td class="text-center">${d.tickets}</td><td class="text-center fw-bold">${d.unidades}</td><td class="text-end fw-bold text-success">C$ ${d.ingreso_total}</td></tr>`); }); } } catch (error) {}
-  try { const resM = await fetch(`${API_URL_DASH}/reportes/mensual`); const datosM = await resM.json(); datosMensualGlobal = datosM; divMensual.innerHTML = ""; if(datosM.length === 0) { divMensual.innerHTML = "<div class='text-center text-muted p-4'>No hay facturas.</div>"; } else { let tablaHTML = `<table class="table table-hover table-bordered align-middle m-0"><thead class="table-dark"><tr><th>Período Contable</th><th class="text-center">Volumen</th><th class="text-end">Recaudado</th></tr></thead><tbody>`; datosM.forEach(m => { tablaHTML += `<tr><td class="fw-bold text-primary">Mes de ${mesANombre(m.mes)}</td><td class="text-center">${m.total_tickets} facturas</td><td class="text-end fw-bold text-success">C$ ${m.total_ganado}.00</td></tr>`; }); tablaHTML += `</tbody></table>`; divMensual.innerHTML = tablaHTML; } } catch (error) {}
-};
+        const respuesta = await fetch(`${API_URL_DASH}/dashboard/ventas-mes`);
+        if (!respuesta.ok) throw new Error("Fallo API grafico ventas");
+        const datos = await respuesta.json();
 
-function mesANombre(formatoMes) { const [mes, anio] = formatoMes.split('-'); const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]; return `${meses[parseInt(mes) - 1]} del ${anio}`; }
-window.generarPDFReporte = function() {
-    const fechaActual = new Date().toLocaleDateString(); let filasMensual = ""; let granTotal = 0;
-    datosMensualGlobal.forEach(m => { granTotal += m.total_ganado; filasMensual += `<tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">Mes de ${mesANombre(m.mes)}</td><td style="text-align:center; padding: 8px; border-bottom: 1px solid #ddd;">${m.total_tickets}</td><td style="text-align:right; font-weight:bold; padding: 8px; border-bottom: 1px solid #ddd;">C$ ${m.total_ganado}.00</td></tr>`; });
-    let filasRendimiento = "";
-    datosReporteGlobal.forEach(d => { filasRendimiento += `<tr><td style="padding: 6px; border-bottom: 1px solid #eee;">${d.producto}</td><td style="text-align:center; padding: 6px; border-bottom: 1px solid #eee;">${d.tickets}</td><td style="text-align:center; padding: 6px; border-bottom: 1px solid #eee;">${d.unidades}</td><td style="text-align:right; padding: 6px; border-bottom: 1px solid #eee;">C$ ${d.ingreso_total}</td></tr>`; });
-    const contenidoHtml = `<div style="font-family: 'Arial', sans-serif; padding: 20px; color: #333;"><div style="text-align: center; border-bottom: 2px solid #ff69b7; padding-bottom: 15px; margin-bottom: 20px;"><h2 style="margin: 0; color: #ff69b7; text-transform: uppercase;">Repostería Sory</h2><p style="margin: 5px 0 0 0; color: #555; font-weight: bold;">Reporte Financiero</p><p style="margin: 5px 0 0 0; font-size: 0.9em;">Fecha: ${fechaActual}</p></div><h4 style="background-color: #f8f9fa; padding: 8px; border-left: 4px solid #333;">1. Resumen Mensual</h4><table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;"><thead><tr style="background-color: #333; color: white;"><th style="padding: 10px; text-align:left;">Mes</th><th style="padding: 10px;">Facturas</th><th style="padding: 10px; text-align:right;">Ingreso</th></tr></thead><tbody>${filasMensual}</tbody><tfoot><tr><td colspan="2" style="text-align:right; padding: 15px; font-weight:bold;">TOTAL GLOBAL:</td><td style="text-align:right; padding: 15px; font-weight:bold; color: green;">C$ ${granTotal}.00</td></tr></tfoot></table><h4 style="background-color: #f8f9fa; padding: 8px; border-left: 4px solid #333;">2. Desglose de Productos</h4><table style="width: 100%; border-collapse: collapse;"><thead><tr style="background-color: #555; color: white;"><th style="padding: 8px; text-align:left;">Producto</th><th style="padding: 8px;">Ventas</th><th style="padding: 8px;">Unidades</th><th style="padding: 8px; text-align:right;">Total</th></tr></thead><tbody>${filasRendimiento}</tbody></table></div>`;
-    const ventana = window.open('', '_blank'); ventana.document.write('<html><body onload="setTimeout(function(){ window.print(); window.close(); }, 500);">'); ventana.document.write(contenidoHtml); ventana.document.write('</body></html>'); ventana.document.close();
-};
+        const ctx = canvas.getContext('2d');
+        if (graficoVentasInstance) graficoVentasInstance.destroy();
 
-document.getElementById("btn-ir-inicio")?.addEventListener("click", () => { cargarDashboard(); }); document.addEventListener("DOMContentLoaded", cargarDashboard);
+        graficoVentasInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: datos.map(d => d.dia),
+                datasets: [{
+                    label: 'Ventas Diarias (C$)',
+                    data: datos.map(d => d.total_dia),
+                    borderColor: '#ff69b7',
+                    backgroundColor: 'rgba(255, 105, 183, 0.2)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    } catch (error) {
+        console.warn("Cargando gráfico de ventas:", error);
+    }
+}
+
+async function cargarGraficoTopProductos() {
+    try {
+        const canvas = document.getElementById('grafico-top-productos');
+        if (!canvas) return;
+
+        const respuesta = await fetch(`${API_URL_DASH}/dashboard/top-productos`);
+        if (!respuesta.ok) throw new Error("Fallo API grafico top productos");
+        const datos = await respuesta.json();
+
+        const ctx = canvas.getContext('2d');
+        if (graficoTopInstance) graficoTopInstance.destroy();
+
+        graficoTopInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: datos.map(d => d.nombre),
+                datasets: [{
+                    label: 'Unidades Vendidas',
+                    data: datos.map(d => d.total_vendido),
+                    backgroundColor: ['#ffb84d', '#ff69b7', '#9b59b6', '#3498db', '#2ecc71'],
+                    borderRadius: 5
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    } catch (error) {
+        console.warn("Cargando gráfico top productos:", error);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    cargarResumenDashboard();
+    cargarGraficoVentasMes();
+    cargarGraficoTopProductos();
+});
