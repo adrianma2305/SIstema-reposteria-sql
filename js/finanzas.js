@@ -5,26 +5,18 @@
 
 const API_URL_FIN = "https://sistema-pasteleria-sql.onrender.com/api"; 
 
-// Función para utilizar el modal personalizado en lugar de alert()
-function mostrarNotificacion(titulo, mensaje, tipo = 'success') {
-    const iconMap = {
-        'success': '<i class="bi bi-check-circle-fill text-success"></i>',
-        'error': '<i class="bi bi-x-circle-fill text-danger"></i>'
-    };
-    document.getElementById('notif-icon').innerHTML = iconMap[tipo] || iconMap['success'];
-    document.getElementById('notif-title').textContent = titulo;
-    document.getElementById('notif-text').textContent = mensaje;
-    const modal = new bootstrap.Modal(document.getElementById('modalNotificacion'));
-    modal.show();
-}
-
 // 1. Navegación: Mostrar la pantalla de finanzas al hacer clic en el menú
-document.getElementById('btn-ir-finanzas').addEventListener('click', (e) => {
+document.getElementById('btn-ir-finanzas')?.addEventListener('click', (e) => {
     e.preventDefault();
     
+    // Ocultar todas las secciones
     document.querySelectorAll('main > section').forEach(sec => sec.style.display = 'none');
-    document.getElementById('seccion-finanzas').style.display = 'block';
     
+    // Mostrar solo finanzas
+    const seccionFinanzas = document.getElementById('seccion-finanzas');
+    if (seccionFinanzas) seccionFinanzas.style.display = 'block';
+    
+    // Cambiar la clase activa en el menú
     document.querySelectorAll('.nav-links li a').forEach(a => a.classList.remove('active'));
     e.target.classList.add('active');
     
@@ -32,7 +24,7 @@ document.getElementById('btn-ir-finanzas').addEventListener('click', (e) => {
 });
 
 // 2. Enviar el gasto al servidor
-async function guardarGastoCIF(event) {
+window.guardarGastoCIF = async function(event) {
     event.preventDefault();
     
     const data = {
@@ -61,10 +53,10 @@ async function guardarGastoCIF(event) {
         console.error("Error de conexión:", error);
         mostrarNotificacion("Fallo de conexión", "No se logró comunicar con el servidor backend.", "error");
     }
-}
+};
 
 // 3. Obtener el Estado de Resultados y actualizar el HTML
-async function cargarEstadoFinanciero() {
+window.cargarEstadoFinanciero = async function() {
     try {
         const res = await fetch(`${API_URL_FIN}/reportes/estado-financiero`);
         const data = await res.json();
@@ -83,10 +75,13 @@ async function cargarEstadoFinanciero() {
         document.getElementById('fin-liquida').textContent = fmt(data.utilidad_liquida);
         
         const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-        document.getElementById('lbl-mes-fiscal').textContent = `Reporte de ${meses[data.mes - 1]} ${data.anio}`;
+        const mesNombre = data.mes ? meses[data.mes - 1] : meses[new Date().getMonth()];
+        const anioNum = data.anio || new Date().getFullYear();
+        
+        document.getElementById('lbl-mes-fiscal').textContent = `Reporte de ${mesNombre} ${anioNum}`;
 
     } catch (error) {
         console.error("Error cargando el estado financiero:", error);
         mostrarNotificacion("Error de Reporte", "Hubo un problema al generar los cálculos financieros.", "error");
     }
-}
+};
