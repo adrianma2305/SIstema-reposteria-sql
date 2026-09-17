@@ -98,20 +98,36 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
         const mes = req.query.mes || new Date().getMonth() + 1;
         const anio = req.query.anio || new Date().getFullYear();
 
-        let qVentas = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
-            .query(`SELECT ISNULL(SUM(v.total), 0) as ingresos, 
-                           ISNULL(SUM(vd.cantidad * ISNULL((SELECT SUM(rd.cantidad_necesaria * i.precio) 
-                           FROM Recetas_Detalle rd JOIN Insumos i ON rd.insumo_id = i.id 
-                           WHERE rd.producto_id = vd.producto_id AND rd.activo=1), 0)), 0) as costo_ventas 
-                    FROM Ventas v JOIN Ventas_Detalle vd ON v.id = vd.venta_id 
-                    WHERE MONTH(v.fecha) = @mes AND YEAR(v.fecha) = @anio`);
+        // 1. Obtener Ingresos Totales de Ventas
+        let qIngresos = await pool.request()
+            .input('mes', sql.Int, mes).input('anio', sql.Int, anio)
+            .query(`SELECT ISNULL(SUM(total), 0) as ingresos FROM Ventas WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio`);
         
-        let ingresos = parseFloat(qVentas.recordset[0].ingresos);
-        let costo_ventas = parseFloat(qVentas.recordset[0].costo_ventas);
+        let ingresos = parseFloat(qIngresos.recordset[0].ingresos);
+
+        // 2. Obtener Costo de Ventas (Usando OUTER APPLY para evitar el error de SUM anidado)
+        let qCostos = await pool.request()
+            .input('mes', sql.Int, mes).input('anio', sql.Int, anio)
+            .query(`
+                SELECT ISNULL(SUM(vd.cantidad * ISNULL(CostoReceta.costo_unitario, 0)), 0) as costo_ventas
+                FROM Ventas v 
+                JOIN Ventas_Detalle vd ON v.id = vd.venta_id 
+                OUTER APPLY (
+                    SELECT SUM(rd.cantidad_necesaria * i.precio) as costo_unitario 
+                    FROM Recetas_Detalle rd 
+                    JOIN Insumos i ON rd.insumo_id = i.id 
+                    WHERE rd.producto_id = vd.producto_id AND rd.activo = 1
+                ) CostoReceta
+                WHERE MONTH(v.fecha) = @mes AND YEAR(v.fecha) = @anio
+            `);
+            
+        let costo_ventas = parseFloat(qCostos.recordset[0].costo_ventas);
         let utilidad_bruta = ingresos - costo_ventas;
 
-        let qGastos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
-            .query(`SELECT ISNULL(SUM(monto_deducible), 0) as total_cif FROM Gastos_Operativos WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio AND activo = 1`);
+        // 3. Obtener Gastos Operativos (Corregido a la columna monto_total)
+        let qGastos = await pool.request()
+            .input('mes', sql.Int, mes).input('anio', sql.Int, anio)
+            .query(`SELECT ISNULL(SUM(monto_total), 0) as total_cif FROM Gastos_Operativos WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio`);
         
         let cif = parseFloat(qGastos.recordset[0].total_cif);
         let utilidad_neta_antes = utilidad_bruta - cif;
@@ -127,7 +143,9 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
             impuestos: { iva_debito, ir_mensual }, 
             utilidad_liquida 
         });
-    } catch (err) { res.status(500).send(err.message); }
+    } catch (err) { 
+        res.status(500).send(err.message); 
+    }
 });
 
 app.listen(3000, () => console.log('Servidor corriendo en el puerto 3000'));
