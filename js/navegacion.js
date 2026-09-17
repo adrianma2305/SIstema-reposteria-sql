@@ -3,7 +3,7 @@ window.mostrarNotificacion = function(titulo, mensaje, tipo = 'info') {
   const modalEl = document.getElementById("modalNotificacion");
   if (!modalEl) return alert(titulo + ": " + mensaje);
 
-  const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   const icon = document.getElementById("notif-icon");
   const titleEl = document.getElementById("notif-title");
   const textEl = document.getElementById("notif-text");
@@ -23,7 +23,7 @@ window.mostrarConfirmacion = function(mensaje, callback) {
   if (!modalEl) { if(confirm(mensaje)) callback(); return; }
 
   document.getElementById("confirm-text").innerText = mensaje;
-  const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   
   const btnConfirmar = document.getElementById("btn-confirmar-accion");
   const newBtn = btnConfirmar.cloneNode(true);
