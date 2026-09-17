@@ -27,7 +27,7 @@ window.mostrarConfirmacion = function(mensaje, callback) {
   
   const btnConfirmar = document.getElementById("btn-confirmar-accion");
   const newBtn = btnConfirmar.cloneNode(true);
-  btnConfirmar.parentNode.replaceChild(newBtn, btnConfirmar); // <--- AQUI ESTABA EL ERROR MORTAL
+  btnConfirmar.parentNode.replaceChild(newBtn, btnConfirmar); 
   
   newBtn.addEventListener('click', () => {
     modal.hide();
@@ -54,9 +54,14 @@ document.addEventListener("DOMContentLoaded", () => {
     usuarios: document.getElementById("seccion-usuarios")
   };
 
+  // SOLUCIÓN: Limpieza universal dinámica. Oculta cualquier <section> dentro del <main>
   function ocultarTodasLasSecciones() {
-    Object.values(secciones).forEach(seccion => { if (seccion) seccion.style.display = "none"; });
-    document.querySelectorAll(".nav-links li a").forEach(a => a.classList.remove("active"));
+    document.querySelectorAll("main > section").forEach(sec => {
+        sec.style.display = "none";
+    });
+    document.querySelectorAll(".nav-links li a").forEach(a => {
+        a.classList.remove("active");
+    });
   }
 
   if (botonesNav.inicio) {
