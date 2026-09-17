@@ -1,4 +1,9 @@
- const API_URL = "https://sistema-pasteleria-sql.onrender.com/api"; 
+// ==========================================
+// LÓGICA DEL MÓDULO CONTABLE Y FISCAL
+// Archivo: js/finanzas.js
+// ==========================================
+
+const API_URL_FIN = "https://sistema-pasteleria-sql.onrender.com/api"; 
 
 // Función para utilizar el modal personalizado en lugar de alert()
 function mostrarNotificacion(titulo, mensaje, tipo = 'success') {
@@ -39,7 +44,7 @@ async function guardarGastoCIF(event) {
     };
 
     try {
-        const res = await fetch(`${API_URL}/api/gastos`, {
+        const res = await fetch(`${API_URL_FIN}/gastos`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -61,7 +66,7 @@ async function guardarGastoCIF(event) {
 // 3. Obtener el Estado de Resultados y actualizar el HTML
 async function cargarEstadoFinanciero() {
     try {
-        const res = await fetch(`${API_URL}/api/reportes/estado-financiero`);
+        const res = await fetch(`${API_URL_FIN}/reportes/estado-financiero`);
         const data = await res.json();
 
         const fmt = (num) => parseFloat(num).toFixed(2);

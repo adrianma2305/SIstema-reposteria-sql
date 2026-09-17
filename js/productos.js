@@ -1,4 +1,4 @@
-const API_URL = "https://sistema-pasteleria-sql.onrender.com/api";
+const API_URL_PROD = "https://sistema-pasteleria-sql.onrender.com/api";
 let productosOriginal = [];
 let insumosAlmacenados = []; 
 let recetaTemporal = []; 
@@ -49,7 +49,7 @@ async function cargarProductos() {
     tabla.innerHTML = "<tr><td colspan='5' class='text-center'>Cargando menú desde Azure...</td></tr>";
     
     try {
-        const respuesta = await fetch(`${API_URL}/productos`);
+        const respuesta = await fetch(`${API_URL_PROD}/productos`);
         if (!respuesta.ok) throw new Error();
         
         productosOriginal = await respuesta.json();
@@ -204,7 +204,7 @@ function actualizarSemaforoEdit() {
 window.reactivarProducto = function(id) { 
     mostrarConfirmacion("¿Deseas volver a vender este producto?", async () => {
         try { 
-            await fetch(`${API_URL}/productos/${id}/reactivar`, { method: 'PUT' }); 
+            await fetch(`${API_URL_PROD}/productos/${id}/reactivar`, { method: 'PUT' }); 
             mostrarNotificacion("Restaurado", "El producto está activo de nuevo.", "success"); 
             cargarProductos(); 
         } catch (error) { 
@@ -216,7 +216,7 @@ window.reactivarProducto = function(id) {
 window.eliminarProducto = function(id) { 
     mostrarConfirmacion("¿Deseas deshabilitar este producto de tu menú?", async () => {
         try { 
-            await fetch(`${API_URL}/productos/${id}`, { method: 'DELETE' }); 
+            await fetch(`${API_URL_PROD}/productos/${id}`, { method: 'DELETE' }); 
             mostrarNotificacion("Eliminado", "El producto fue ocultado exitosamente.", "success"); 
             cargarProductos(); 
         } catch (error) { 
@@ -262,7 +262,7 @@ document.getElementById("form-editar").addEventListener("submit", async (event) 
     }
     
     try {
-        const res = await fetch(`${API_URL}/productos/${id}`, { 
+        const res = await fetch(`${API_URL_PROD}/productos/${id}`, { 
             method: 'PUT', 
             headers: { 'Content-Type': 'application/json' }, 
             body: JSON.stringify({ nombre, precio, categoria_id }) 
@@ -283,7 +283,7 @@ document.getElementById("form-editar").addEventListener("submit", async (event) 
 // ==========================================
 async function cargarSelectInsumosReceta() { 
     try { 
-        const respuesta = await fetch(`${API_URL}/insumos`); 
+        const respuesta = await fetch(`${API_URL_PROD}/insumos`); 
         insumosAlmacenados = await respuesta.json(); 
         
         const select = document.getElementById("insumo-receta-select"); 
@@ -396,7 +396,7 @@ async function verRecetaModal(id, nombreProducto) {
     new bootstrap.Modal(document.getElementById("modalVerReceta")).show(); 
     
     try { 
-        const res = await fetch(`${API_URL}/productos/${id}/receta`); 
+        const res = await fetch(`${API_URL_PROD}/productos/${id}/receta`); 
         const datos = await res.json(); 
         
         tbody.innerHTML = ""; 
@@ -438,7 +438,7 @@ async function agregarProducto(event) {
     }
 
     try { 
-        const respuesta = await fetch(`${API_URL}/productos`, { 
+        const respuesta = await fetch(`${API_URL_PROD}/productos`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
             body: JSON.stringify({ nombre, precio, categoria_id, receta: recetaTemporal }) 
@@ -482,7 +482,7 @@ async function ejecutarProduccion(event) {
     }
     
     try { 
-        const respuesta = await fetch(`${API_URL}/produccion`, { 
+        const respuesta = await fetch(`${API_URL_PROD}/produccion`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
             body: JSON.stringify({ producto_id, cantidad_producida, usuario_id }) 
@@ -515,7 +515,7 @@ async function ejecutarProduccion(event) {
 
 async function cargarSelectsCategorias() { 
     try { 
-        const respuesta = await fetch(`${API_URL}/categorias`); 
+        const respuesta = await fetch(`${API_URL_PROD}/categorias`); 
         const categorias = await respuesta.json(); 
         
         const selectFiltro = document.getElementById("filtro-categoria"); 
