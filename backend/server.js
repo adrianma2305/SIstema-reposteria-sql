@@ -373,14 +373,25 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
         const anio = req.query.anio || new Date().getFullYear();
 
         let qVentas = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio).query(`
-            SELECT ISNULL(SUM(v.total), 0) as ingresos, 
-                   ISNULL(SUM(vd.cantidad * ISNULL((SELECT SUM(rd.cantidad_necesaria * i.precio) FROM Recetas_Detalle rd JOIN Insumos i ON rd.insumo_id = i.id WHERE rd.producto_id = vd.producto_id AND rd.activo=1), 0)), 0) as costo_ventas 
-            FROM Ventas v JOIN Ventas_Detalle vd ON v.id = vd.venta_id WHERE MONTH(v.fecha) = @mes AND YEAR(v.fecha) = @anio
+            SELECT ISNULL(SUM(v.total), 0) as ingresos 
+            FROM Ventas v WHERE MONTH(v.fecha) = @mes AND YEAR(v.fecha) = @anio
         `);
-        let ingresos = parseFloat(qVentas.recordset[0].ingresos); let costo_ventas = parseFloat(qVentas.recordset[0].costo_ventas);
         
-        res.json({ mes, anio, ingresos, costo_ventas, utilidad_bruta: ingresos - costo_ventas });
-    } catch (err) { res.status(500).send(err.message); }
+        let ingresos = parseFloat(qVentas.recordset[0].ingresos); 
+        
+        
+        let costo_ventas = ingresos * 0.35; // Estimación base del 35% de costo de materia prima ajustable
+
+        res.json({ 
+            mes, 
+            anio, 
+            ingresos, 
+            costo_ventas, 
+            utilidad_bruta: ingresos - costo_ventas 
+        });
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 // ==========================================
