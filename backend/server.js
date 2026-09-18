@@ -180,20 +180,17 @@ app.post('/api/compras/rapida', async (req, res) => {
         await transaction.begin();
 
         try {
-            // Actualizar stock
             await transaction.request()
                 .input('id', sql.Int, insumo_id)
                 .input('cant', sql.Decimal(10, 2), cantidad)
                 .query('UPDATE Insumos SET stock_actual = stock_actual + @cant WHERE id = @id');
 
-            // Insertar movimiento Kardex
             await transaction.request()
                 .input('insumo_id', sql.Int, insumo_id)
                 .input('cant', sql.Decimal(10, 2), cantidad)
                 .input('motivo', sql.VarChar, 'Compra Rápida')
                 .query("INSERT INTO Kardex_Insumos (insumo_id, tipo_movimiento, cantidad, fecha, motivo) VALUES (@insumo_id, 'ENTRADA', @cant, GETDATE(), @motivo)");
 
-            // Registrar Gasto o Deuda
             if(tipo_pago === 'CREDITO') {
                 await transaction.request()
                     .input('prov_id', sql.Int, proveedor_id)
@@ -308,9 +305,9 @@ app.post('/api/proveedores/:id/deuda', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// =========================================
+// ==========================================
 // 4. MÓDULO DE PRODUCTOS Y RECETAS
-// =========================================
+// ==========================================
 app.get('/api/productos', async (req, res) => {
     try {
         let pool = await poolPromise;
@@ -417,7 +414,6 @@ app.post('/api/ventas', async (req, res) => {
             const venta_id = resultVenta.recordset[0].id;
 
             for (let item of detalles) {
-                // Registrar detalle de venta
                 await transaction.request()
                     .input('venta_id', sql.Int, venta_id)
                     .input('prod_id', sql.Int, item.producto_id)
@@ -426,7 +422,6 @@ app.post('/api/ventas', async (req, res) => {
                     .input('subtotal', sql.Decimal(10, 2), item.subtotal)
                     .query('INSERT INTO Ventas_Detalle (venta_id, producto_id, cantidad, precio_unitario, subtotal) VALUES (@venta_id, @prod_id, @cant, @precio, @subtotal)');
                 
-                // Descontar Stock de Producto
                 await transaction.request()
                     .input('prod_id', sql.Int, item.producto_id)
                     .input('cant', sql.Int, item.cantidad)
@@ -531,16 +526,21 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
     }
 });
 
+// REPARACIÓN: Corte de caja blindado contra el error 500 de la columna tipo TEXT
 app.get('/api/reportes/corte-caja', async (req, res) => {
     try {
         let pool = await poolPromise;
-        let rVentas = await pool.request().query('SELECT ISNULL(SUM(total), 0) as total FROM Ventas WHERE CAST(fecha AS DATE) = CAST(GETDATE() AS DATE)');
-        let rGastos = await pool.request().query("SELECT ISNULL(SUM(monto_total), 0) as total FROM Gastos_Operativos WHERE CAST(fecha_gasto AS DATE) = CAST(GETDATE() AS DATE) AND descripcion LIKE '%contado%'");
+        let rVentas = await pool.request().query("SELECT ISNULL(SUM(total), 0) as total FROM Ventas WHERE CONVERT(DATE, fecha) = CONVERT(DATE, GETDATE())");
         
-        let ventas = rVentas.recordset[0].total || 0;
-        let gastos = rGastos.recordset[0].total || 0;
+        let rGastos = await pool.request().query("SELECT ISNULL(SUM(monto_total), 0) as total FROM Gastos_Operativos WHERE CONVERT(DATE, fecha_gasto) = CONVERT(DATE, GETDATE()) AND (CAST(descripcion AS VARCHAR(MAX)) LIKE '%contado%' OR tipo_gasto = 'COMPRA INSUMO')");
+        
+        let ventas = parseFloat(rVentas.recordset[0].total) || 0;
+        let gastos = parseFloat(rGastos.recordset[0].total) || 0;
         res.json({ ventas, gastos, caja: ventas - gastos });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        console.error("Error Corte de Caja:", err);
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 // ==========================================
@@ -549,9 +549,9 @@ app.get('/api/reportes/corte-caja', async (req, res) => {
 app.get('/api/dashboard/resumen', async (req, res) => {
     try {
         let pool = await poolPromise;
-        let rDia = await pool.request().query("SELECT ISNULL(SUM(total), 0) as t FROM Ventas WHERE CAST(fecha AS DATE) = CAST(GETDATE() AS DATE)");
+        let rDia = await pool.request().query("SELECT ISNULL(SUM(total), 0) as t FROM Ventas WHERE CONVERT(DATE, fecha) = CONVERT(DATE, GETDATE())");
         let rSem = await pool.request().query("SELECT ISNULL(SUM(total), 0) as t FROM Ventas WHERE fecha >= DATEADD(day, -7, GETDATE())");
-        let rMes = await pool.request().query("SELECT ISNULL(SUM(total), 0) as t FROM Ventas WHERE MONTH(fecha) = MONTH(GETDATE())");
+        let rMes = await pool.request().query("SELECT ISNULL(SUM(total), 0) as t FROM Ventas WHERE MONTH(fecha) = MONTH(GETDATE()) AND YEAR(fecha) = YEAR(GETDATE())");
         res.json({ dia: rDia.recordset[0].t, semana: rSem.recordset[0].t, mes: rMes.recordset[0].t });
     } catch (err) { res.json({ dia: 0, semana: 0, mes: 0 }); }
 });
@@ -561,7 +561,7 @@ app.get('/api/dashboard/ventas-mes', async (req, res) => {
         let pool = await poolPromise;
         let result = await pool.request().query(`
             SELECT DAY(fecha) as dia, SUM(total) as total_dia 
-            FROM Ventas WHERE MONTH(fecha) = MONTH(GETDATE()) 
+            FROM Ventas WHERE MONTH(fecha) = MONTH(GETDATE()) AND YEAR(fecha) = YEAR(GETDATE()) 
             GROUP BY DAY(fecha) ORDER BY dia ASC
         `);
         res.json(result.recordset.length > 0 ? result.recordset : [{ dia: 1, total_dia: 0 }]);
