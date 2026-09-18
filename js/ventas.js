@@ -2,7 +2,6 @@ const API_URL_VENTAS = "https://sistema-pasteleria-sql.onrender.com/api";
 let productosVenta = [];
 let carritoActual = [];
 
-// Enlaza la función al window global para que el botón HTML la encuentre
 window.cargarCatVentas = async function() {
   try {
     const res = await fetch(`${API_URL_VENTAS}/productos`);
@@ -191,7 +190,6 @@ function abrirRecibo(id, cliente, empleado, detalles, total, fechaStr = null) {
   const tbody = document.getElementById("recibo-detalles");
   tbody.innerHTML = "";
   detalles.forEach(d => {
-    // Si viene la propiedad precio_unitario la usamos, sino la calculamos
     const precio = d.precio_unitario ? d.precio_unitario : (d.subtotal / d.cantidad);
     tbody.insertAdjacentHTML('beforeend', `
       <tr>
@@ -222,7 +220,9 @@ window.abrirCorteCaja = async function() {
         hCaja.className = data.caja < 0 ? "fw-bold m-0 text-danger" : "fw-bold m-0 text-success";
 
         bootstrap.Modal.getOrCreateInstance(document.getElementById("modalCorteCaja")).show();
-    } catch (error) { mostrarNotificacion("Espera", "Verificando caja con Azure...", "warning"); }
+    } catch (error) { 
+        mostrarNotificacion("Error", "No se pudo hacer el corte de caja. Verifica que el backend esté en línea.", "error"); 
+    }
 };
 
 document.getElementById("busqueda-venta-productos")?.addEventListener("input", function(e) {

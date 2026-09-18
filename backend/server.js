@@ -526,13 +526,25 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
     }
 });
 
-// REPARACIÓN: Corte de caja blindado contra el error 500 de la columna tipo TEXT
+// REPARACIÓN DEFINITIVA: Corte de caja ultra-simplificado (Cero búsquedas de texto)
 app.get('/api/reportes/corte-caja', async (req, res) => {
     try {
         let pool = await poolPromise;
-        let rVentas = await pool.request().query("SELECT ISNULL(SUM(total), 0) as total FROM Ventas WHERE CONVERT(DATE, fecha) = CONVERT(DATE, GETDATE())");
         
-        let rGastos = await pool.request().query("SELECT ISNULL(SUM(monto_total), 0) as total FROM Gastos_Operativos WHERE CONVERT(DATE, fecha_gasto) = CONVERT(DATE, GETDATE()) AND (CAST(descripcion AS VARCHAR(MAX)) LIKE '%contado%' OR tipo_gasto = 'COMPRA INSUMO')");
+        // Suma de Ventas del día (Ingresos a caja)
+        let rVentas = await pool.request().query(`
+            SELECT ISNULL(SUM(total), 0) as total 
+            FROM Ventas 
+            WHERE CAST(fecha AS DATE) = CAST(GETDATE() AS DATE)
+        `);
+        
+        // Suma de Gastos del día (Egresos de caja)
+        // Ya no filtramos por texto. Todo gasto registrado es una salida de caja chica.
+        let rGastos = await pool.request().query(`
+            SELECT ISNULL(SUM(monto_total), 0) as total 
+            FROM Gastos_Operativos 
+            WHERE CAST(fecha_gasto AS DATE) = CAST(GETDATE() AS DATE)
+        `);
         
         let ventas = parseFloat(rVentas.recordset[0].total) || 0;
         let gastos = parseFloat(rGastos.recordset[0].total) || 0;
