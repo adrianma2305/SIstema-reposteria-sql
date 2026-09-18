@@ -43,7 +43,8 @@ document.addEventListener("DOMContentLoaded", () => {
     ventas: document.getElementById("btn-ir-ventas"),
     productos: document.getElementById("btn-ir-productos"),
     proveedores: document.getElementById("btn-ir-proveedores"),
-    usuarios: document.getElementById("btn-ir-usuarios")
+    usuarios: document.getElementById("btn-ir-usuarios"),
+    finanzas: document.getElementById("btn-ir-finanzas")
   };
 
   const secciones = {
@@ -51,7 +52,8 @@ document.addEventListener("DOMContentLoaded", () => {
     ventas: document.getElementById("seccion-ventas"),
     productos: document.getElementById("seccion-productos"),
     proveedores: document.getElementById("seccion-proveedores"),
-    usuarios: document.getElementById("seccion-usuarios")
+    usuarios: document.getElementById("seccion-usuarios"),
+    finanzas: document.getElementById("seccion-finanzas")
   };
 
   // SOLUCIÓN DEFINITIVA: Oculta cualquier elemento cuyo ID empiece con "seccion-"
@@ -96,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault(); ocultarTodasLasSecciones();
       if (secciones.proveedores) secciones.proveedores.style.display = "block";
       botonesNav.proveedores.classList.add("active");
-      if (typeof cargarProveedores === 'function') cargarProveedores();
+      if (typeof cargarTablaProveedores === 'function') cargarTablaProveedores();
       if (typeof cargarInsumos === 'function') cargarInsumos();
     });
   }
@@ -107,6 +109,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (secciones.usuarios) secciones.usuarios.style.display = "block";
       botonesNav.usuarios.classList.add("active");
       if (typeof cargarTablaUsuariosAdmin === 'function') cargarTablaUsuariosAdmin();
+    });
+  }
+
+  if (botonesNav.finanzas) {
+    botonesNav.finanzas.addEventListener("click", (e) => {
+      e.preventDefault(); ocultarTodasLasSecciones();
+      if (secciones.finanzas) secciones.finanzas.style.display = "block";
+      botonesNav.finanzas.classList.add("active");
+      if (typeof cargarEstadoFinanciero === 'function') cargarEstadoFinanciero();
     });
   }
 

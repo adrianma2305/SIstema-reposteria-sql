@@ -308,9 +308,9 @@ app.post('/api/proveedores/:id/deuda', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ==========================================
+// =========================================
 // 4. MÓDULO DE PRODUCTOS Y RECETAS
-// ==========================================
+// =========================================
 app.get('/api/productos', async (req, res) => {
     try {
         let pool = await poolPromise;
