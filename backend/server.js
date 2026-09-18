@@ -199,7 +199,7 @@ app.post('/api/compras/rapida', async (req, res) => {
             } else {
                 await transaction.request()
                     .input('total', sql.Decimal(10, 2), costo_total)
-                    .query("INSERT INTO Gastos_Operativos (tipo_gasto, monto_total, porcentaje_negocio, fecha_gasto, descripcion) VALUES ('COMPRA INSUMO', @total, 100, GETDATE(), 'Pago de contado mercadería')");
+                    .query("INSERT INTO Gastos_Operativos (tipo_gasto, monto_total, porcentaje_negocio, fecha, descripcion) VALUES ('COMPRA INSUMO', @total, 100, GETDATE(), 'Pago de contado mercadería')");
             }
 
             await transaction.commit();
@@ -480,7 +480,7 @@ app.post('/api/gastos', async (req, res) => {
             .input('monto', sql.Decimal(10, 2), monto_total)
             .input('porcentaje', sql.Decimal(5, 2), porcentaje_negocio)
             .input('fecha', sql.Date, fecha || new Date())
-            .query("INSERT INTO Gastos_Operativos (tipo_gasto, monto_total, porcentaje_negocio, fecha_gasto, descripcion) VALUES (@tipo, @monto, @porcentaje, @fecha, 'Registro Manual')");
+            .query("INSERT INTO Gastos_Operativos (tipo_gasto, monto_total, porcentaje_negocio, fecha, descripcion) VALUES (@tipo, @monto, @porcentaje, @fecha, 'Registro Manual')");
         res.status(201).json({ message: 'OK' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -495,7 +495,7 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
             .query('SELECT ISNULL(SUM(total), 0) as ingresos FROM Ventas WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio');
         
         let qGastos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
-            .query('SELECT ISNULL(SUM(monto_total * (porcentaje_negocio / 100.0)), 0) as gastos FROM Gastos_Operativos WHERE MONTH(fecha_gasto) = @mes AND YEAR(fecha_gasto) = @anio');
+            .query('SELECT ISNULL(SUM(monto_total * (porcentaje_negocio / 100.0)), 0) as gastos FROM Gastos_Operativos WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio');
         
         let qCostos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
             .query(`
@@ -543,7 +543,7 @@ app.get('/api/reportes/corte-caja', async (req, res) => {
         let rGastos = await pool.request().query(`
             SELECT ISNULL(SUM(monto_total), 0) as total 
             FROM Gastos_Operativos 
-            WHERE CAST(fecha_gasto AS DATE) = CAST(GETDATE() AS DATE)
+            WHERE CAST(fecha AS DATE) = CAST(GETDATE() AS DATE)
         `);
         
         let ventas = parseFloat(rVentas.recordset[0].total) || 0;
