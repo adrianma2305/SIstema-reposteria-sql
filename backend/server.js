@@ -141,6 +141,41 @@ app.get('/api/reportes/mensual', async (req, res) => { try { let pool = await po
 app.get('/api/reportes/corte-caja', async (req, res) => { try { let pool = await poolPromise; let rVentas = await pool.request().query("SELECT ISNULL(SUM(total), 0) as v FROM Ventas WHERE CAST(fecha as DATE) = CAST(GETDATE() as DATE)"); let rCompras = await pool.request().query("SELECT ISNULL(SUM(total_factura), 0) as c FROM Compras_Proveedores WHERE CAST(fecha_compra as DATE) = CAST(GETDATE() as DATE) AND estado_pago = 'PAGADO'"); res.json({ ventas: rVentas.recordset[0].v, gastos: rCompras.recordset[0].c, caja: (rVentas.recordset[0].v - rCompras.recordset[0].c) }); } catch(e) { res.status(500).send(e.message); } });
 
 app.post('/api/finanzas/gastos', async (req, res) => { try { let pool = await poolPromise; await pool.request().input('tipo', sql.VarChar, req.body.tipo_gasto).input('monto', sql.Decimal(10,2), req.body.monto_total).input('porc', sql.Decimal(5,2), req.body.porcentaje_negocio).input('fecha', sql.Date, req.body.fecha).query('INSERT INTO Gastos_Operativos (tipo_gasto, monto_total, porcentaje_negocio, fecha_gasto) VALUES (@tipo, @monto, @porc, @fecha)'); res.status(201).send('OK'); } catch (err) { res.status(500).send(err.message); } });
-app.get('/api/reportes/estado-financiero', async (req, res) => { try { let pool = await poolPromise; const mes = req.query.mes || new Date().getMonth() + 1; const anio = req.query.anio || new Date().getFullYear(); let qVentas = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio).query(`SELECT ISNULL(SUM(v.total), 0) as ingresos, ISNULL(SUM(vd.cantidad * ISNULL((SELECT SUM(rd.cantidad_necesaria * i.precio) FROM Recetas_Detalle rd JOIN Insumos i ON rd.insumo_id = i.id WHERE rd.producto_id = vd.producto_id AND rd.activo=1), 0)), 0) as costo_ventas FROM Ventas v JOIN Ventas_Detalle vd ON v.id = vd.venta_id WHERE MONTH(v.fecha) = @mes AND YEAR(v.fecha) = @anio`); let qGastos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio).query(`SELECT ISNULL(SUM(monto_total * (porcentaje_negocio / 100.0)), 0) as gastos FROM Gastos_Operativos WHERE MONTH(fecha_gasto) = @mes AND YEAR(fecha_gasto) = @anio`); let ingresos = parseFloat(qVentas.recordset[0].ingresos) || 0; let costo_ventas = parseFloat(qVentas.recordset[0].costo_ventas) || 0; let cif = parseFloat(qGastos.recordset[0].gastos) || 0; res.json({ mes, anio, ingresos, costo_ventas, utilidad_bruta: ingresos - costo_ventas, cif: cif, utilidad_neta_antes: (ingresos - costo_ventas) - cif, impuestos: { iva_debito: ingresos * 0.15, ir_mensual: ingresos * 0.01 }, utilidad_liquida: ((ingresos - costo_ventas) - cif) - (ingresos * 0.01) }); } catch (err) { res.status(500).json({ error: err.message }); } });
+app.get('/api/reportes/estado-financiero', async (req, res) => { 
+    try { 
+        let pool = await poolPromise; 
+        const mes = req.query.mes || new Date().getMonth() + 1; 
+        const anio = req.query.anio || new Date().getFullYear(); 
+
+        let qVentas = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio).query(`
+            SELECT ISNULL(SUM(total), 0) as ingresos FROM Ventas WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio
+        `); 
+        
+        let qCostos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio).query(`
+            SELECT ISNULL(SUM(vd.cantidad * ISNULL((SELECT SUM(rd.cantidad_necesaria * i.precio) FROM Recetas_Detalle rd JOIN Insumos i ON rd.insumo_id = i.id WHERE rd.producto_id = vd.producto_id), 0)), 0) as costo_ventas 
+            FROM Ventas_Detalle vd JOIN Ventas v ON vd.venta_id = v.id WHERE MONTH(v.fecha) = @mes AND YEAR(v.fecha) = @anio
+        `);
+
+        let qGastos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio).query(`
+            SELECT ISNULL(SUM(monto_total * (porcentaje_negocio / 100.0)), 0) as gastos 
+            FROM Gastos_Operativos WHERE MONTH(fecha_gasto) = @mes AND YEAR(fecha_gasto) = @anio
+        `); 
+
+        let ingresos = parseFloat(qVentas.recordset[0].ingresos) || 0; 
+        let costo_ventas = parseFloat(qCostos.recordset[0].costo_ventas) || 0; 
+        let cif = parseFloat(qGastos.recordset[0].gastos) || 0; 
+
+        res.json({ 
+            mes, anio, ingresos, costo_ventas, 
+            utilidad_bruta: ingresos - costo_ventas, cif: cif, 
+            utilidad_neta_antes: (ingresos - costo_ventas) - cif, 
+            impuestos: { iva_debito: ingresos * 0.15, ir_mensual: ingresos * 0.01 }, 
+            utilidad_liquida: ((ingresos - costo_ventas) - cif) - (ingresos * 0.01) 
+        }); 
+    } catch (err) { 
+        console.error("Error SQL en Finanzas:", err);
+        res.status(500).json({ error: err.message }); 
+    } 
+});
 
 app.listen(3000, () => console.log('✅ Servidor corriendo con todas las rutas en puerto 3000'));
