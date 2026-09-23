@@ -565,12 +565,15 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
         const mes = req.query.mes || new Date().getMonth() + 1;
         const anio = req.query.anio || new Date().getFullYear();
 
+        // 1. Ingresos por Ventas
         let qVentas = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
             .query('SELECT ISNULL(SUM(total), 0) as ingresos FROM Ventas WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio');
         
+        // 2. Gastos (CORREGIDO: Busca por 'fecha' y no por 'fecha_gasto')
         let qGastos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
             .query('SELECT ISNULL(SUM(monto_total * (porcentaje_negocio / 100.0)), 0) as gastos FROM Gastos_Operativos WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio');
         
+        // 3. Costos de Materia Prima
         let qCostos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
             .query(`
                 SELECT ISNULL(SUM(vd.cantidad * ISNULL((
@@ -596,6 +599,7 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
 
         res.json({ mes, anio, ingresos, costo_ventas, utilidad_bruta, cif, utilidad_neta_antes, impuestos: { iva_debito, ir_mensual }, utilidad_liquida });
     } catch (err) {
+        console.error("Error en reporte financiero:", err.message);
         res.json({ mes: 1, anio: 2026, ingresos: 0, costo_ventas: 0, utilidad_bruta: 0, cif: 0, utilidad_neta_antes: 0, impuestos: { iva_debito: 0, ir_mensual: 0 }, utilidad_liquida: 0 });
     }
 });
