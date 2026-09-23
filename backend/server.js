@@ -306,8 +306,70 @@ app.post('/api/proveedores/:id/deuda', async (req, res) => {
 });
 
 // ==========================================
-// 4. MÓDULO DE PRODUCTOS Y RECETAS
+// 4. MÓDULO DE PRODUCTOS, RECETAS, CATEGORIAS
 // ==========================================
+
+app.get('/api/categorias', async (req, res) => {
+    try {
+        let pool = await poolPromise;
+        let result = await pool.request().query('SELECT * FROM Categorias ORDER BY nombre');
+        res.json(result.recordset);
+    } catch (err) { res.status(500).send(err.message); }
+});
+
+app.get('/api/productos/:id/receta', async (req, res) => {
+    try {
+        let pool = await poolPromise;
+        let result = await pool.request().input('id', sql.Int, req.params.id).query(`
+            SELECT rd.insumo_id, i.nombre as nombre_insumo, i.unidad, i.precio as costo_unitario, rd.cantidad_necesaria, (rd.cantidad_necesaria * i.precio) as subtotal_costo 
+            FROM Recetas_Detalle rd 
+            JOIN Insumos i ON rd.insumo_id = i.id 
+            WHERE rd.producto_id = @id AND rd.activo = 1
+        `);
+        res.json(result.recordset);
+    } catch (err) { res.status(500).send(err.message); }
+});
+
+app.post('/api/produccion', async (req, res) => {
+    let transaction;
+    try {
+        const { producto_id, cantidad_producida, usuario_id } = req.body;
+        let pool = await poolPromise;
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        let reqReceta = new sql.Request(transaction);
+        let resReceta = await reqReceta.input('p_id', sql.Int, producto_id).query('SELECT rd.insumo_id, i.nombre, rd.cantidad_necesaria FROM Recetas_Detalle rd JOIN Insumos i ON rd.insumo_id = i.id WHERE rd.producto_id = @p_id AND rd.activo = 1'); 
+        
+        if(resReceta.recordset.length === 0) { 
+            let reqStock = new sql.Request(transaction); 
+            await reqStock.input('p_id', sql.Int, producto_id).input('cant', sql.Int, cantidad_producida).query('UPDATE Productos SET stock = ISNULL(stock, 0) + @cant WHERE id = @p_id'); 
+            await transaction.commit(); 
+            return res.status(200).json({ success: true, tipo: 'directo' }); 
+        } 
+        
+        for (let item of resReceta.recordset) { 
+            let gastoTotal = item.cantidad_necesaria * cantidad_producida; 
+            let reqCheck = new sql.Request(transaction); 
+            let resCheck = await reqCheck.input('ins_id', sql.Int, item.insumo_id).query("SELECT ISNULL((SELECT SUM(CASE WHEN tipo_movimiento = 'ENTRADA' THEN cantidad ELSE -cantidad END) FROM Kardex_Insumos WHERE insumo_id = @ins_id), 0) as stock"); 
+            
+            if (resCheck.recordset[0].stock < gastoTotal) { throw new Error(`Stock insuficiente. Faltan ${(gastoTotal - resCheck.recordset[0].stock).toFixed(2)} de "${item.nombre}"`); } 
+            
+            let reqKardex = new sql.Request(transaction); 
+            await reqKardex.input('ins_id', sql.Int, item.insumo_id).input('cant', sql.Decimal(10,4), gastoTotal).input('usu_id', sql.Int, usuario_id || null).input('motivo', sql.VarChar, `Producción de ${cantidad_producida} unid.`).query("INSERT INTO Kardex_Insumos (insumo_id, tipo_movimiento, cantidad, motivo, usuario_id) VALUES (@ins_id, 'SALIDA', @cant, @motivo, @usu_id)"); 
+        } 
+        
+        let reqStock = new sql.Request(transaction); 
+        await reqStock.input('p_id', sql.Int, producto_id).input('cant', sql.Int, cantidad_producida).query('UPDATE Productos SET stock = ISNULL(stock, 0) + @cant WHERE id = @p_id'); 
+        
+        await transaction.commit(); 
+        res.status(200).json({ success: true, tipo: 'receta' }); 
+    } catch (err) { 
+        if(transaction) await transaction.rollback(); 
+        res.status(400).send(err.message); 
+    }
+});
+
 app.get('/api/productos', async (req, res) => {
     try {
         let pool = await poolPromise;
