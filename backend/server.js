@@ -117,6 +117,18 @@ app.get('/api/insumos', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.get('/api/insumos/:id', async (req, res) => {
+    try {
+        let pool = await poolPromise;
+        let result = await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query('SELECT * FROM Insumos WHERE id = @id AND activo = 1');
+        res.json(result.recordset[0]);
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
+});
+
 app.post('/api/insumos', async (req, res) => {
     try {
         const { nombre, unidad, precio, proveedor_id } = req.body;
