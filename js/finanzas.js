@@ -27,7 +27,7 @@ window.cargarEstadoFinanciero = async function() {
     }
 };
 
-// REPARACIÓN: Función para registrar los gastos operativos (restaurada)
+// Función para registrar los gastos operativos 
 window.guardarGastoCIF = async function(e) {
     e.preventDefault();
     const tipo_gasto = document.getElementById("gasto-tipo").value;
