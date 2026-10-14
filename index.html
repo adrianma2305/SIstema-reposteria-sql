@@ -155,51 +155,75 @@
         </div>
       </section>
 
-      <!-- SECCIÓN: VENTAS -->
+      <!-- SECCIÓN: VENTAS (ACTUALIZADA CON FACTURA FORMAL) -->
       <section id="seccion-ventas" style="display: none">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="m-0">Realizar una venta</h2>
             <button class="btn btn-warning fw-bold shadow-sm text-dark" onclick="abrirCorteCaja()"><i class="bi bi-safe"></i> Corte de Caja (Arqueo)</button>
         </div>
         <div class="row">
-          <div class="col-md-8">
+          <div class="col-md-7">
             <div class="card mb-3 shadow-sm border-0">
               <div class="card-body p-3">
-                <input type="text" id="busqueda-venta-productos" class="form-control mb-3" placeholder="Buscar por nombre..." />
-                <div class="productos-scroll" style="height: 420px">
-                  <div id="grid-productos-venta" class="row row-cols-2 row-cols-md-4 g-3"></div>
+                <input type="text" id="busqueda-venta-productos" class="form-control mb-3" placeholder="Buscar producto por nombre..." />
+                <div class="productos-scroll" style="height: 480px">
+                  <div id="grid-productos-venta" class="row row-cols-2 row-cols-md-3 g-3"></div>
                 </div>
               </div>
             </div>
           </div>
-          <div class="col-md-4">
-            <div class="card mb-3 shadow-sm border-0">
-              <div class="card-body p-2">
-                <h5>Factura actual</h5>
-                <div class="mb-2">
-                  <input type="text" id="cliente-nombre" class="form-control form-control-sm mb-1" placeholder="Nombre del cliente (opcional)" />
-                  <input type="text" id="cliente-telefono" class="form-control form-control-sm" placeholder="Teléfono del cliente (opcional)" />
+          <div class="col-md-5">
+            <div class="card mb-3 shadow-sm border-0 border-success">
+              <div class="card-header bg-success text-white fw-bold">
+                <i class="bi bi-cart"></i> Facturación en Caja
+              </div>
+              <div class="card-body p-3">
+                <div class="row g-2 mb-2">
+                  <div class="col-6"><input type="text" id="cliente-nombre" class="form-control form-control-sm" placeholder="Cliente (Opcional)" /></div>
+                  <div class="col-6"><input type="text" id="cliente-telefono" class="form-control form-control-sm" placeholder="Teléfono" /></div>
                 </div>
-                <div class="factura-scroll" style="max-height: 260px">
-                  <table class="table table-sm align-middle mb-2">
-                    <thead><tr><th>Producto</th><th>Cant.</th><th>Total</th><th></th></tr></thead>
+                
+                <div class="factura-scroll border mb-2" style="height: 180px; overflow-y: auto;">
+                  <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light" style="position: sticky; top:0;"><tr><th>Prod.</th><th>Cant.</th><th>Total</th><th></th></tr></thead>
                     <tbody id="tabla-factura"></tbody>
                   </table>
                 </div>
-                <div class="d-flex justify-content-between fw-bold border-top pt-2 mt-2 bg-white">
-                  <span>Total:</span><span id="factura-total">C$ 0</span>
+                
+                <!-- Controles de Factura Formal en POS -->
+                <div class="bg-light p-2 rounded mb-2 border border-secondary">
+                  <div class="form-check form-switch mb-1">
+                    <input class="form-check-input bg-success" type="checkbox" id="pos-iva" onchange="actualizarUIFactura()">
+                    <label class="form-check-label small fw-bold">Factura Formal (+15% IVA)</label>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input bg-warning" type="checkbox" id="pos-retencion" onchange="actualizarUIFactura()">
+                    <label class="form-check-label small fw-bold">Aplicar Retenciones (IR/ALMA 3%)</label>
+                  </div>
                 </div>
-                <button class="btn btn-success w-100 mt-3" id="btn-guardar-venta" disabled>Guardar venta</button>
+
+                <!-- Resumen Monetario Dinámico -->
+                <div class="border-top pt-2 mt-2 bg-white small">
+                  <div class="d-flex justify-content-between text-muted"><span>Subtotal:</span><span id="pos-subtotal">C$ 0.00</span></div>
+                  <div class="d-flex justify-content-between text-success" id="div-pos-iva" style="display:none !important;"><span>(+) IVA 15%:</span><span id="pos-iva-val">C$ 0.00</span></div>
+                  <div class="d-flex justify-content-between text-danger" id="div-pos-ret" style="display:none !important;"><span>(-) Retenciones 3%:</span><span id="pos-ret-val">C$ 0.00</span></div>
+                  
+                  <div class="d-flex justify-content-between fw-bold fs-5 mt-1 border-top pt-1 text-dark">
+                    <span>TOTAL A COBRAR:</span><span id="factura-total">C$ 0.00</span>
+                  </div>
+                </div>
+                <button class="btn btn-success w-100 mt-3 btn-lg fw-bold shadow-sm" id="btn-guardar-venta" disabled>Cobrar e Imprimir Ticket</button>
               </div>
             </div>
           </div>
         </div>
+        
         <h4 class="mb-3 mt-4">Historial de Ventas</h4>
         <div class="card shadow-sm border-0">
           <div class="card-body p-0 tabla-scroll">
             <table id="ventas-table" class="table table-striped table-hover align-middle m-0">
               <thead class="table-dark">
-                <tr><th>Ticket #</th><th>Fecha y Hora</th><th>Cliente</th><th>Atendió</th><th>Total</th><th class="text-center">Acción</th></tr>
+                <tr><th>Ticket #</th><th>Fecha y Hora</th><th>Cliente</th><th>Atendió</th><th>Total Cobrado</th><th class="text-center">Acción</th></tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -273,52 +297,45 @@
         </div>
       </section>
 
-      <!-- SECCIÓN: FINANZAS Y DGI -->
+      <!-- SECCIÓN: FINANZAS, EGRESOS Y FACTURACIÓN -->
       <section id="seccion-finanzas" style="display: none">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h2 class="m-0">Gestión Contable y Fiscal</h2>
-          <button class="btn btn-dark fw-bold shadow-sm" onclick="cargarEstadoFinanciero()">
-            <i class="bi bi-arrow-clockwise"></i> Actualizar Reporte
-          </button>
-        </div>
-        <div class="row">
-          <div class="col-md-4 mb-4">
-            <div class="card shadow-sm border-0 h-100">
-              <div class="card-header bg-primary text-white fw-bold">Registrar Gasto (Agua, Luz, Nómina)</div>
-              <div class="card-body">
-                <form id="form-registrar-gasto" onsubmit="guardarGastoCIF(event)">
-                  <div class="mb-3">
-                    <label class="form-label fw-bold">Tipo de Gasto</label>
-                    <select id="gasto-tipo" class="form-select" required>
-                      <option value="LUZ">Energía Eléctrica (Luz)</option>
-                      <option value="AGUA">Agua Potable</option>
-                      <option value="SALARIO">Nómina / Salario</option>
-                      <option value="OTROS">Otros Gastos</option>
-                    </select>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label fw-bold">Recibo Total (C$)</label>
-                    <input type="number" id="gasto-monto" class="form-control" min="1" step="0.01" required>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label fw-bold">% Aplicable al Negocio</label>
-                    <div class="input-group">
-                      <input type="number" id="gasto-porcentaje" class="form-control" min="1" max="100" value="100" required>
-                      <span class="input-group-text">%</span>
-                    </div>
-                    <small class="text-muted">Ej: Si el recibo es de la casa, pon 40% para deducir legalmente solo la porción de la repostería.</small>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label fw-bold">Fecha del Gasto</label>
-                    <input type="date" id="gasto-fecha" class="form-control" required>
-                  </div>
-                  <button type="submit" class="btn btn-primary w-100 fw-bold">Registrar Gasto</button>
-                </form>
-              </div>
-            </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-danger fw-bold shadow-sm" onclick="exportarFinanzasPDF()">
+              <i class="bi bi-file-earmark-pdf"></i> Exportar P&L a PDF
+            </button>
+            <button class="btn btn-dark fw-bold shadow-sm" onclick="cargarEstadoFinanciero()">
+              <i class="bi bi-arrow-clockwise"></i> Actualizar Datos
+            </button>
           </div>
-          <div class="col-md-8 mb-4">
-            <div class="card shadow-sm border-0 h-100">
+        </div>
+
+        <!-- Pestañas de Navegación Contable -->
+        <ul class="nav nav-tabs mb-4" id="finanzasTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold text-primary" data-bs-toggle="tab" data-bs-target="#tab-resultados" type="button">
+              <i class="bi bi-bar-chart-fill"></i> Estado de Resultados
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold text-danger" data-bs-toggle="tab" data-bs-target="#tab-egresos" type="button">
+              <i class="bi bi-calculator"></i> Egresos y Activos
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold text-success" data-bs-toggle="tab" data-bs-target="#tab-machote" type="button">
+              <i class="bi bi-receipt"></i> Machote de Factura Formal
+            </button>
+          </li>
+        </ul>
+
+        <!-- Contenido de las Pestañas -->
+        <div class="tab-content bg-white p-4 border rounded border-top-0 shadow-sm" style="margin-top: -25px;">
+          
+          <!-- 1. PESTAÑA: ESTADO DE RESULTADOS (DISEÑO RESTAURADO) -->
+          <div class="tab-pane fade show active" id="tab-resultados">
+            <div class="card shadow-none border border-secondary" id="area-imprimir-finanzas">
               <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between">
                 <span>Estado de Resultados (Pérdidas y Ganancias)</span>
                 <span id="lbl-mes-fiscal">Mes Actual</span>
@@ -329,19 +346,179 @@
                     <tr><td class="ps-4">Ingresos Brutos por Ventas</td><td class="text-end fw-bold text-success pe-4">C$ <span id="fin-ingresos">0.00</span></td></tr>
                     <tr><td class="ps-4">(-) Costo de Materia Prima (Según Recetas)</td><td class="text-end text-danger pe-4">C$ <span id="fin-costos">0.00</span></td></tr>
                     <tr class="table-light"><td class="ps-4 fw-bold">UTILIDAD BRUTA</td><td class="text-end fw-bold pe-4">C$ <span id="fin-util-bruta">0.00</span></td></tr>
-                    <tr><td class="ps-4">(-) Gastos Operativos (Luz, Agua, Salarios prorrateados)</td><td class="text-end text-danger pe-4">C$ <span id="fin-cif">0.00</span></td></tr>
+                    <tr><td class="ps-4">(-) Egresos Operativos (Luz, Agua, Nómina, etc.)</td><td class="text-end text-danger pe-4">C$ <span id="fin-cif">0.00</span></td></tr>
                     <tr class="table-warning"><td class="ps-4 fw-bold">UTILIDAD NETA ANTES DE IMPUESTOS</td><td class="text-end fw-bold pe-4">C$ <span id="fin-util-antes">0.00</span></td></tr>
                     <tr><td class="ps-4">(-) Retención IR DGI (Anticipo 1%)</td><td class="text-end text-danger pe-4">C$ <span id="fin-ir">0.00</span></td></tr>
                     <tr class="table-success text-dark"><td class="ps-4 fw-bold fs-4">UTILIDAD LÍQUIDA (Ganancia Real)</td><td class="text-end fw-bold fs-4 pe-4">C$ <span id="fin-liquida">0.00</span></td></tr>
                   </tbody>
                 </table>
-                <div class="bg-light p-3 border-top text-center mt-3 mx-3 rounded">
+                <div class="bg-light p-3 border-top text-center mt-3 mx-3 rounded mb-3" id="declaratoria-iva-box">
                   <h6 class="fw-bold mb-1">Declaratoria IVA (DGI)</h6>
-                  <p class="m-0 small text-muted">Monto total a declarar en formulario de IVA (15% sobre ventas grabadas): <strong class="text-dark fs-5">C$ <span id="fin-iva">0.00</span></strong></p>
+                  <p class="m-0 small text-muted">Monto estimado a declarar en formulario de IVA (15% sobre ventas): <strong class="text-dark fs-5">C$ <span id="fin-iva">0.00</span></strong></p>
                 </div>
               </div>
             </div>
           </div>
+
+          <!-- 2. PESTAÑA: EGRESOS Y ACTIVOS -->
+          <div class="tab-pane fade" id="tab-egresos">
+            <div class="row">
+              <div class="col-md-5 mb-4 border-end pr-4">
+                <div class="card shadow-sm border-danger">
+                  <div class="card-header bg-danger text-white fw-bold">Registrar Desembolso (Egresos o Adquisición de Activos)</div>
+                  <div class="card-body bg-light">
+                    <form id="form-registrar-egreso" onsubmit="guardarEgreso(event)">
+                      <div class="mb-3">
+                        <label class="form-label fw-bold">Categoría Contable</label>
+                        <select id="egreso-tipo" class="form-select border-danger" required>
+                          <option value="" disabled selected>Seleccione la categoría exacta...</option>
+                          <optgroup label="Servicios Básicos">
+                            <option value="ENERGIA">Energía Eléctrica (Recibo Disnorte/Dissur)</option>
+                            <option value="AGUA">Agua Potable (Recibo Enacal)</option>
+                            <option value="INTERNET">Internet y Telefonía</option>
+                          </optgroup>
+                          <optgroup label="Operativos y Administrativos">
+                            <option value="NOMINA">Nómina y Salarios de Empleados</option>
+                            <option value="ALQUILER">Alquiler de Local</option>
+                            <option value="MANTENIMIENTO">Mantenimiento de Equipos o Local</option>
+                            <option value="TRIBUTOS">Impuestos y Matrícula (Alcaldía/DGI)</option>
+                          </optgroup>
+                          <optgroup label="Bienes Capitalizables (Inversión)">
+                            <option value="ACTIVO_FIJO">Compra de Activo Fijo (Hornos, Vitrinas, Motos)</option>
+                          </optgroup>
+                        </select>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label fw-bold">Descripción / Detalle (Obligatorio para DGI)</label>
+                        <input type="text" id="egreso-desc" class="form-control border-danger" placeholder="Ej: Pago de recibo de luz mes de Octubre, Factura #12345" required>
+                      </div>
+                      <div class="row">
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label fw-bold">Monto Total (C$)</label>
+                          <input type="text" id="egreso-monto" class="form-control border-danger fw-bold" placeholder="0.00" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label fw-bold">Fecha del Desembolso</label>
+                          <input type="date" id="egreso-fecha" class="form-control border-danger" required>
+                        </div>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label fw-bold">% Aplicable al Negocio</label>
+                        <div class="input-group">
+                          <input type="number" id="egreso-porcentaje" class="form-control border-danger text-center fw-bold" min="1" max="100" value="100" required>
+                          <span class="input-group-text bg-danger text-white">%</span>
+                        </div>
+                        <small class="text-muted">Ej: Si el recibo es de la casa, pon 40% para deducir legalmente solo la porción de la repostería.</small>
+                      </div>
+                      <button type="submit" class="btn btn-danger w-100 fw-bold btn-lg">Registrar Transacción</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-7 ps-md-4 mt-4 mt-md-0">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="fw-bold m-0"><i class="bi bi-clock-history"></i> Historial (Mes Actual)</h5>
+                  <button class="btn btn-sm btn-outline-danger fw-bold shadow-sm" onclick="exportarEgresosPDF()">
+                    <i class="bi bi-printer"></i> Imprimir Historial
+                  </button>
+                </div>
+                <div class="table-responsive border rounded" style="max-height: 520px; overflow-y: auto;">
+                  <table class="table table-sm table-hover align-middle m-0" id="tabla-exportar-egresos">
+                    <thead class="table-dark" style="position: sticky; top: 0;">
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Categoría</th>
+                        <th>Descripción</th>
+                        <th class="text-end">Costo Total</th>
+                        <th class="text-end">Deducible</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tabla-egresos-historial">
+                      <tr><td colspan="5" class="text-center text-muted py-4">Cargando historial...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. PESTAÑA: MACHOTE DE FACTURA -->
+          <div class="tab-pane fade" id="tab-machote">
+            <div class="row">
+              <div class="col-md-5 border-end pr-4">
+                <h5 class="fw-bold text-success mb-3"><i class="bi bi-building"></i> Datos Comerciales</h5>
+                <div class="mb-3">
+                  <label class="form-label fw-bold small">Cliente / Razón Social</label>
+                  <input type="text" id="machote-cliente" class="form-control" placeholder="Ej: Empresa S.A.">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-bold small">Sub-Total (Sin IVA)</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-success text-white">C$</span>
+                    <input type="text" id="machote-subtotal" class="form-control fw-bold" placeholder="0.00" oninput="calcularMachote()">
+                  </div>
+                </div>
+                
+                <h6 class="fw-bold mt-4 border-bottom pb-2">Aplicación de Impuestos</h6>
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input bg-success" type="checkbox" id="chk-iva" checked onchange="calcularMachote()">
+                  <label class="form-check-label fw-bold text-muted">Agregar IVA (15%)</label>
+                </div>
+                
+                <h6 class="fw-bold mt-4 border-bottom pb-2">Retenciones en la Fuente (Cliente te retiene)</h6>
+                <div class="mb-2">
+                  <label class="form-label small fw-bold text-muted">Retención IR (DGI)</label>
+                  <select id="sel-ret-ir" class="form-select form-select-sm border-warning" onchange="calcularMachote()">
+                    <option value="0">0% - Sin Retención IR</option>
+                    <option value="1.5">1.5% - Bienes (Ley de Concertación)</option>
+                    <option value="2">2.0% - Servicios Generales</option>
+                  </select>
+                </div>
+                <div class="form-check form-switch mt-3">
+                  <input class="form-check-input bg-warning" type="checkbox" id="chk-alma" onchange="calcularMachote()">
+                  <label class="form-check-label fw-bold text-muted">Retención Alcaldía ALMA (1%)</label>
+                </div>
+              </div>
+
+              <div class="col-md-7 ps-md-4 mt-4 mt-md-0">
+                <div class="card bg-light border-success shadow-sm">
+                  <div class="card-header bg-success text-white fw-bold text-center">
+                    VISTA PREVIA DE FACTURA FORMAL
+                  </div>
+                  <div class="card-body" style="font-family: 'Courier New', Courier, monospace; font-size: 1.1rem; color: #000;">
+                    <div class="d-flex justify-content-between mb-2">
+                      <span>Sub-Total:</span>
+                      <span class="fw-bold">C$ <span id="out-subtotal">0.00</span></span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 text-success">
+                      <span>(+) IVA 15%:</span>
+                      <span class="fw-bold">C$ <span id="out-iva">0.00</span></span>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between mb-2">
+                      <span>TOTAL BRUTO:</span>
+                      <span class="fw-bold">C$ <span id="out-bruto">0.00</span></span>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between mb-2 text-danger">
+                      <span>(-) Retención IR:</span>
+                      <span>C$ <span id="out-ret-ir">0.00</span></span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 text-danger border-bottom pb-2">
+                      <span>(-) Retención ALMA (1%):</span>
+                      <span>C$ <span id="out-ret-alma">0.00</span></span>
+                    </div>
+                    <div class="d-flex justify-content-between mt-3 fs-3">
+                      <span class="fw-bold text-dark">NETO A RECIBIR:</span>
+                      <span class="fw-bold text-success">C$ <span id="out-neto">0.00</span></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
     </main>
@@ -573,14 +750,53 @@
       </div>
     </div>
 
-    <!-- Modal Recibo de Venta -->
+    <!-- Modal Recibo de Venta (Convertido a Factura Formal) -->
     <div class="modal fade" id="modalRecibo" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow">
           <div class="modal-body p-4" id="area-imprimir-recibo" style="font-family: 'Courier New', Courier, monospace; color: #000; background: #fff;">
-            <div class="text-center mb-3"><h4 class="fw-bold mb-0">Reposteria Sory</h4><small>Granada, Nicaragua</small><br><small>================================</small><br><small class="fw-bold">TICKET DE VENTA #<span id="recibo-id"></span></small><br><small id="recibo-fecha"></small></div><div class="mb-2" style="font-size: 0.9rem;"><div><b>Cliente:</b> <span id="recibo-cliente"></span></div><div><b>Cajero:</b> <span id="recibo-empleado"></span></div></div><small>================================</small><table class="w-100 mb-2" style="font-size: 0.85rem;"><thead><tr><th class="text-start pb-1">CANT</th><th class="text-start pb-1">DESCRIPCIÓN</th><th class="text-end pb-1">IMPORTE</th></tr></thead><tbody id="recibo-detalles"></tbody></table><small>================================</small><div class="d-flex justify-content-between fw-bold fs-5 mt-2"><span>TOTAL:</span><span id="recibo-total"></span></div><div class="text-center mt-4"><small>¡Gracias por su compra!</small></div>
+            <div class="text-center mb-3">
+              <h4 class="fw-bold mb-0">Reposteria Sory</h4>
+              <small>Granada, Nicaragua</small><br>
+              <small>RUC: J0310000123456</small><br>
+              <small>================================</small><br>
+              <small class="fw-bold fs-6">FACTURA / TICKET #<span id="recibo-id"></span></small><br>
+              <small id="recibo-fecha"></small>
+            </div>
+            <div class="mb-2" style="font-size: 0.9rem;">
+              <div><b>Cliente:</b> <span id="recibo-cliente"></span></div>
+              <div><b>Cajero:</b> <span id="recibo-empleado"></span></div>
+            </div>
+            <small>================================</small>
+            <table class="w-100 mb-2" style="font-size: 0.85rem;">
+              <thead><tr><th class="text-start pb-1">CANT</th><th class="text-start pb-1">DESCRIPCIÓN</th><th class="text-end pb-1">IMPORTE</th></tr></thead>
+              <tbody id="recibo-detalles"></tbody>
+            </table>
+            <small>================================</small>
+            
+            <div class="d-flex justify-content-between mt-2" style="font-size: 0.85rem;">
+              <span>SUBTOTAL:</span><span id="recibo-subtotal"></span>
+            </div>
+            <div class="d-flex justify-content-between text-success" style="font-size: 0.85rem;" id="row-recibo-iva">
+              <span>(+) IVA 15%:</span><span id="recibo-iva"></span>
+            </div>
+            <div class="d-flex justify-content-between text-danger" style="font-size: 0.85rem;" id="row-recibo-ret">
+              <span>(-) RETENCIONES:</span><span id="recibo-ret"></span>
+            </div>
+            <small>================================</small>
+            <div class="d-flex justify-content-between fw-bold fs-5 mt-1">
+              <span>TOTAL NETO:</span><span id="recibo-total"></span>
+            </div>
+            
+            <div class="text-center mt-4">
+              <small>¡Gracias por su preferencia!</small><br>
+              <small class="text-muted" style="font-size: 0.7rem;">Facturado en SISGERES POS</small>
+            </div>
           </div>
-          <div class="modal-footer p-2 bg-light d-flex justify-content-between"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button><button type="button" class="btn btn-dark btn-sm fw-bold" onclick="imprimirElemento('area-imprimir-recibo')"><i class="bi bi-printer"></i> Imprimir</button></div>
+          <div class="modal-footer p-2 bg-light d-flex justify-content-between">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+            <button type="button" class="btn btn-dark btn-sm fw-bold" onclick="imprimirElemento('area-imprimir-recibo')"><i class="bi bi-printer"></i> Imprimir</button>
+          </div>
         </div>
       </div>
     </div>

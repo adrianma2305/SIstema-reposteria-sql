@@ -543,22 +543,44 @@ app.get('/api/ventas/:id/detalles', async (req, res) => {
 });
 
 // ==========================================
-// 6. FINANZAS Y GASTOS
+// 6. FINANZAS Y GASTOS OPERATIVOS
 // ==========================================
+
+// 1. RUTA DE REGISTRO (Corregida: Ahora guarda la descripción real)
 app.post('/api/gastos', async (req, res) => {
     try {
-        const { tipo_gasto, monto_total, porcentaje_negocio, fecha } = req.body;
+        const { tipo_gasto, monto_total, porcentaje_negocio, fecha, descripcion } = req.body;
         let pool = await poolPromise;
+        
         await pool.request()
             .input('tipo', sql.VarChar, tipo_gasto)
             .input('monto', sql.Decimal(10, 2), monto_total)
             .input('porcentaje', sql.Decimal(5, 2), porcentaje_negocio)
             .input('fecha', sql.Date, fecha || new Date())
-            .query("INSERT INTO Gastos_Operativos (tipo_gasto, monto_total, porcentaje_negocio, fecha, descripcion) VALUES (@tipo, @monto, @porcentaje, @fecha, 'Registro Manual')");
+            .input('desc', sql.VarChar, descripcion)
+            .query("INSERT INTO Gastos_Operativos (tipo_gasto, monto_total, porcentaje_negocio, fecha, descripcion) VALUES (@tipo, @monto, @porcentaje, @fecha, @desc)");
+        
         res.status(201).json({ message: 'OK' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// 2. NUEVA RUTA: Para cargar la tabla de historial en la Pestaña 2
+app.get('/api/gastos/historial', async (req, res) => {
+    try {
+        let pool = await poolPromise;
+        let result = await pool.request().query(`
+            SELECT tipo_gasto, monto_total, porcentaje_negocio, 
+                   (monto_total * (porcentaje_negocio / 100.0)) as deducible, 
+                   fecha, descripcion
+            FROM Gastos_Operativos 
+            WHERE MONTH(fecha) = MONTH(GETDATE()) AND YEAR(fecha) = YEAR(GETDATE())
+            ORDER BY fecha DESC
+        `);
+        res.json(result.recordset);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 3. RUTA INTACTA: Tu súper Estado Financiero con el cálculo de Recetas
 app.get('/api/reportes/estado-financiero', async (req, res) => {
     try {
         let pool = await poolPromise;
@@ -569,11 +591,11 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
         let qVentas = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
             .query('SELECT ISNULL(SUM(total), 0) as ingresos FROM Ventas WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio');
         
-        // 2. Gastos (CORREGIDO: Busca por 'fecha' y no por 'fecha_gasto')
+        // 2. Gastos 
         let qGastos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
             .query('SELECT ISNULL(SUM(monto_total * (porcentaje_negocio / 100.0)), 0) as gastos FROM Gastos_Operativos WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio');
         
-        // 3. Costos de Materia Prima
+        // 3. Costos de Materia Prima (Lógica Intacta)
         let qCostos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
             .query(`
                 SELECT ISNULL(SUM(vd.cantidad * ISNULL((
@@ -604,20 +626,17 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
     }
 });
 
-// REPARACIÓN DEFINITIVA: Corte de caja ultra-simplificado (Cero búsquedas de texto)
+// 4. RUTA INTACTA: Corte de caja ultra-simplificado
 app.get('/api/reportes/corte-caja', async (req, res) => {
     try {
         let pool = await poolPromise;
         
-        // Suma de Ventas del día (Ingresos a caja)
         let rVentas = await pool.request().query(`
             SELECT ISNULL(SUM(total), 0) as total 
             FROM Ventas 
             WHERE CAST(fecha AS DATE) = CAST(GETDATE() AS DATE)
         `);
         
-        // Suma de Gastos del día (Egresos de caja)
-        // Ya no filtramos por texto. Todo gasto registrado es una salida de caja chica.
         let rGastos = await pool.request().query(`
             SELECT ISNULL(SUM(monto_total), 0) as total 
             FROM Gastos_Operativos 

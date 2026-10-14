@@ -72,17 +72,17 @@ window.eliminarDelCarrito = function(idProd) {
   actualizarUIFactura();
 };
 
-function actualizarUIFactura() {
+// AQUI ESTÁ LA MAGIA DEL MACHOTE INTEGRADA AL CARRITO
+window.actualizarUIFactura = function() {
   const tbody = document.getElementById("tabla-factura");
-  const totalEl = document.getElementById("factura-total");
   const btnGuardar = document.getElementById("btn-guardar-venta");
   if(!tbody) return;
 
   tbody.innerHTML = "";
-  let total = 0;
+  let subtotalVenta = 0;
 
   carritoActual.forEach(item => {
-    total += item.subtotal;
+    subtotalVenta += item.subtotal;
     tbody.insertAdjacentHTML('beforeend', `
       <tr>
         <td class="small text-truncate" style="max-width: 120px;">${item.nombre}</td>
@@ -99,7 +99,37 @@ function actualizarUIFactura() {
     `);
   });
 
-  totalEl.innerText = `C$ ${total}`;
+  const aplicaIva = document.getElementById("pos-iva")?.checked;
+  const aplicaRet = document.getElementById("pos-retencion")?.checked;
+
+  const montoIva = aplicaIva ? (subtotalVenta * 0.15) : 0;
+  const montoRet = aplicaRet ? (subtotalVenta * 0.03) : 0; // Se asume 3% global si te retienen todo (2% IR + 1% ALMA)
+  const totalNeto = subtotalVenta + montoIva - montoRet;
+
+  document.getElementById("pos-subtotal").innerText = `C$ ${subtotalVenta.toFixed(2)}`;
+  
+  if(aplicaIva) {
+    document.getElementById("div-pos-iva").style.setProperty("display", "flex", "important");
+    document.getElementById("pos-iva-val").innerText = `C$ ${montoIva.toFixed(2)}`;
+  } else {
+    document.getElementById("div-pos-iva").style.setProperty("display", "none", "important");
+  }
+
+  if(aplicaRet) {
+    document.getElementById("div-pos-ret").style.setProperty("display", "flex", "important");
+    document.getElementById("pos-ret-val").innerText = `C$ ${montoRet.toFixed(2)}`;
+  } else {
+    document.getElementById("div-pos-ret").style.setProperty("display", "none", "important");
+  }
+
+  document.getElementById("factura-total").innerText = `C$ ${totalNeto.toFixed(2)}`;
+  
+  // Guardar en la ventana para pasarlo al ticket al guardar
+  window.totalVentaSubtotal = subtotalVenta;
+  window.totalVentaIva = montoIva;
+  window.totalVentaRet = montoRet;
+  window.totalVentaNeto = totalNeto;
+
   if(btnGuardar) btnGuardar.disabled = carritoActual.length === 0;
 }
 
@@ -124,27 +154,34 @@ document.getElementById("btn-guardar-venta")?.addEventListener("click", async ()
       cliente_id = dataCli.id;
     }
 
-    let totalVenta = carritoActual.reduce((acc, item) => acc + item.subtotal, 0);
+    let totalGuardar = window.totalVentaNeto || 0;
 
     const resVenta = await fetch(`${API_URL_VENTAS}/ventas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cliente_id, empleado_id, total: totalVenta, detalles: carritoActual })
+      body: JSON.stringify({ cliente_id, empleado_id, total: totalGuardar, detalles: carritoActual })
     });
 
     if (!resVenta.ok) throw new Error("Error al guardar venta");
     const dataVenta = await resVenta.json();
 
     mostrarNotificacion("Venta Exitosa", `Ticket #${dataVenta.id} generado.`, "success");
-    abrirRecibo(dataVenta.id, nombreCliente || "Consumidor Final", empleado_id, carritoActual, totalVenta);
+    
+    // Abrir Ticket con toda la info desglosada
+    abrirRecibo(dataVenta.id, nombreCliente || "Consumidor Final", empleado_id, carritoActual, window.totalVentaSubtotal, window.totalVentaIva, window.totalVentaRet, totalGuardar);
 
     carritoActual = [];
     document.getElementById("cliente-nombre").value = "";
     document.getElementById("cliente-telefono").value = "";
+    
+    // Resetear switches
+    if(document.getElementById("pos-iva")) document.getElementById("pos-iva").checked = false;
+    if(document.getElementById("pos-retencion")) document.getElementById("pos-retencion").checked = false;
+    
     actualizarUIFactura();
     window.cargarCatVentas(); 
   } catch (error) { mostrarNotificacion("Error", "Fallo al guardar la venta.", "error"); } 
-  finally { btnGuardar.disabled = false; btnGuardar.innerText = "Guardar venta"; }
+  finally { btnGuardar.disabled = false; btnGuardar.innerText = "Cobrar e Imprimir Ticket"; }
 });
 
 async function cargarVentasHistorial() {
@@ -164,7 +201,7 @@ async function cargarVentasHistorial() {
           <td>${v.cliente}</td>
           <td><span class="badge bg-secondary"><i class="bi bi-person"></i> ${v.empleado}</span></td>
           <td class="fw-bold text-success">C$ ${v.total}</td>
-          <td class="text-center"><button class="btn btn-sm btn-outline-dark" onclick="window.verDetalleVenta(${v.id}, '${v.cliente}', '${fecha}', '${v.empleado}', ${v.total})"><i class="bi bi-printer"></i> Ticket</button></td>
+          <td class="text-center"><button class="btn btn-sm btn-outline-dark" onclick="window.verDetalleVenta(${v.id}, '${v.cliente}', '${fecha}', '${v.empleado}', ${v.total})"><i class="bi bi-printer"></i> Imprimir</button></td>
         </tr>
       `);
     });
@@ -176,16 +213,17 @@ window.verDetalleVenta = async function(idVenta, cliente, fecha, empleado, total
     const res = await fetch(`${API_URL_VENTAS}/ventas/${idVenta}/detalles`);
     if(!res.ok) throw new Error();
     const detalles = await res.json();
-    abrirRecibo(idVenta, cliente, empleado, detalles, total, fecha);
-  } catch (error) { mostrarNotificacion("Error", "Error al cargar los detalles del ticket.", "error"); }
+    // Como es ticket antiguo, asumimos que total = subtotal (0 iva, 0 retencion)
+    abrirRecibo(idVenta, cliente, empleado, detalles, total, 0, 0, total, fecha);
+  } catch (error) { mostrarNotificacion("Error", "Error al cargar los detalles.", "error"); }
 };
 
-function abrirRecibo(id, cliente, empleado, detalles, total, fechaStr = null) {
+// IMPRIME EL RECIBO DESGLOSADO
+function abrirRecibo(id, cliente, empleado, detalles, subtotal, iva, retenciones, total, fechaStr = null) {
   document.getElementById("recibo-id").innerText = id;
   document.getElementById("recibo-fecha").innerText = fechaStr || new Date().toLocaleString();
   document.getElementById("recibo-cliente").innerText = cliente;
   document.getElementById("recibo-empleado").innerText = empleado || "Admin";
-  document.getElementById("recibo-total").innerText = `C$ ${total}`;
 
   const tbody = document.getElementById("recibo-detalles");
   tbody.innerHTML = "";
@@ -197,10 +235,30 @@ function abrirRecibo(id, cliente, empleado, detalles, total, fechaStr = null) {
         <td class="text-start pb-2" style="word-break: break-word; white-space: normal;">
             ${d.nombre} <br><small class="text-muted">C$ ${precio}</small>
         </td>
-        <td class="text-end pb-2 align-top">C$ ${d.subtotal}</td>
+        <td class="text-end pb-2 align-top fw-bold">C$ ${d.subtotal}</td>
       </tr>
     `);
   });
+
+  document.getElementById("recibo-subtotal").innerText = `C$ ${parseFloat(subtotal).toFixed(2)}`;
+  
+  const rowIva = document.getElementById("row-recibo-iva");
+  if(iva > 0) {
+    rowIva.style.setProperty("display", "flex", "important");
+    document.getElementById("recibo-iva").innerText = `C$ ${parseFloat(iva).toFixed(2)}`;
+  } else {
+    rowIva.style.setProperty("display", "none", "important");
+  }
+
+  const rowRet = document.getElementById("row-recibo-ret");
+  if(retenciones > 0) {
+    rowRet.style.setProperty("display", "flex", "important");
+    document.getElementById("recibo-ret").innerText = `C$ ${parseFloat(retenciones).toFixed(2)}`;
+  } else {
+    rowRet.style.setProperty("display", "none", "important");
+  }
+
+  document.getElementById("recibo-total").innerText = `C$ ${parseFloat(total).toFixed(2)}`;
 
   bootstrap.Modal.getOrCreateInstance(document.getElementById("modalRecibo")).show();
 }
@@ -208,7 +266,7 @@ function abrirRecibo(id, cliente, empleado, detalles, total, fechaStr = null) {
 window.abrirCorteCaja = async function() {
     try {
         const res = await fetch(`${API_URL_VENTAS}/reportes/corte-caja`);
-        if (!res.ok) throw new Error("Fallo al obtener corte");
+        if (!res.ok) throw new Error();
         const data = await res.json();
 
         document.getElementById("corte-fecha").innerText = new Date().toLocaleDateString();
@@ -220,9 +278,7 @@ window.abrirCorteCaja = async function() {
         hCaja.className = data.caja < 0 ? "fw-bold m-0 text-danger" : "fw-bold m-0 text-success";
 
         bootstrap.Modal.getOrCreateInstance(document.getElementById("modalCorteCaja")).show();
-    } catch (error) { 
-        mostrarNotificacion("Error", "No se pudo hacer el corte de caja. Verifica que el backend esté en línea.", "error"); 
-    }
+    } catch (error) { mostrarNotificacion("Error", "No se pudo hacer el corte de caja.", "error"); }
 };
 
 document.getElementById("busqueda-venta-productos")?.addEventListener("input", function(e) {
@@ -231,5 +287,4 @@ document.getElementById("busqueda-venta-productos")?.addEventListener("input", f
   renderizarGridVentas(activos.filter(p => p.nombre.toLowerCase().includes(val)));
 });
 
-// Evitar múltiples llamadas al cargar la sección
 document.getElementById("btn-ir-ventas")?.addEventListener("click", () => { window.cargarCatVentas(); });

@@ -129,3 +129,84 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnAccionAgregar) btnAccionAgregar.addEventListener("click", () => { if (botonesNav.productos) botonesNav.productos.click(); });
   if (btnAccionProveedores) btnAccionProveedores.addEventListener("click", () => { if (botonesNav.proveedores) botonesNav.proveedores.click(); });
 });
+
+// ========================================================
+// VALIDACIONES GLOBALES DE CAMPOS (NOMBRES, TELÉFONOS, DINERO)
+// ========================================================
+document.addEventListener("DOMContentLoaded", () => {
+
+    // 1. VALIDACIÓN DE NOMBRES (Solo letras, acentos, ñ y espacios)
+    const camposNombres = [
+        'nombre-insumo', 'edit-nombre-insumo',
+        'nombre-proveedor', 'edit-nombre-proveedor',
+        'nombre', 'edit-nombre', // Productos
+        'cliente-nombre', 
+        'nombre-usuario', 'edit-nombre-usuario'
+    ];
+
+    camposNombres.forEach(id => {
+        const inputEl = document.getElementById(id);
+        if (inputEl) {
+            inputEl.addEventListener('input', function() {
+                // Reemplaza todo lo que NO sea una letra (mayúscula/minúscula), acento, ñ o espacio por nada ("")
+                this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+            });
+        }
+    });
+
+
+    // 2. VALIDACIÓN DE TELÉFONOS (Solo 8 números exactos)
+    const camposTelefonos = [
+        'telefono-proveedor', 'edit-telefono-proveedor',
+        'cliente-telefono'
+    ];
+
+    camposTelefonos.forEach(id => {
+        const inputEl = document.getElementById(id);
+        if (inputEl) {
+            // Forzar que el HTML nativo no deje meter más de 8 caracteres
+            inputEl.setAttribute('maxlength', '8');
+            
+            // Mientras escribe: borrar letras y símbolos
+            inputEl.addEventListener('input', function() {
+                this.value = this.value.replace(/[^0-9]/g, '');
+            });
+
+            // Cuando sale del campo (pierde el foco): validar si metió menos de 8
+            inputEl.addEventListener('blur', function() {
+                if (this.value.length > 0 && this.value.length < 8) {
+                    if (typeof mostrarNotificacion === 'function') {
+                        mostrarNotificacion("Teléfono Incompleto", "El número de teléfono debe tener exactamente 8 dígitos.", "warning");
+                    }
+                    this.classList.add("is-invalid"); // Le pone un borde rojo de Bootstrap
+                } else {
+                    this.classList.remove("is-invalid"); // Quita el borde rojo si está bien
+                }
+            });
+        }
+    });
+
+
+    // 3. VALIDACIÓN DE DINERO Y CANTIDADES (Solo números y 1 punto decimal)
+    const camposDecimales = [
+        'precio', 'edit-precio', 'gasto-monto', 'monto-abono', 
+        'deuda-monto', 'compra-total', 'insumo-receta-cantidad',
+        'precio-insumo', 'edit-precio-insumo', 'compra-cantidad'
+    ];
+
+    camposDecimales.forEach(id => {
+        const inputEl = document.getElementById(id);
+        if (inputEl) {
+            inputEl.addEventListener('input', function() {
+                // Borrar todo lo que no sea número o punto
+                this.value = this.value.replace(/[^0-9.]/g, '');
+                
+                // Si hay más de un punto decimal (ej. 12.5.3), borra el último
+                if ((this.value.match(/\./g) || []).length > 1) {
+                    this.value = this.value.substring(0, this.value.lastIndexOf('.'));
+                }
+            });
+        }
+    });
+
+});
