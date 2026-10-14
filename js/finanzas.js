@@ -33,15 +33,26 @@ window.cargarEstadoFinanciero = async function() {
 
         const fmt = (num) => parseFloat(num || 0).toFixed(2);
 
+        // Llenar tabla P&L
         document.getElementById('fin-ingresos').textContent = fmt(data.ingresos);
         document.getElementById('fin-costos').textContent = fmt(data.costo_ventas);
         document.getElementById('fin-util-bruta').textContent = fmt(data.utilidad_bruta);
         document.getElementById('fin-cif').textContent = fmt(data.cif); 
         document.getElementById('fin-util-antes').textContent = fmt(data.utilidad_neta_antes);
-        
         document.getElementById('fin-ir').textContent = fmt(data.impuestos?.ir_mensual);
         document.getElementById('fin-iva').textContent = fmt(data.impuestos?.iva_debito);
         document.getElementById('fin-liquida').textContent = fmt(data.utilidad_liquida);
+
+        // Llenar nuevas Tarjetas KPI
+        const totalSalidas = parseFloat(data.costo_ventas || 0) + parseFloat(data.cif || 0) + parseFloat(data.impuestos?.ir_mensual || 0);
+        let margen = 0;
+        if (parseFloat(data.ingresos) > 0) {
+            margen = (parseFloat(data.utilidad_liquida) / parseFloat(data.ingresos)) * 100;
+        }
+
+        document.getElementById('kpi-ingresos').textContent = fmt(data.ingresos);
+        document.getElementById('kpi-salidas').textContent = fmt(totalSalidas);
+        document.getElementById('kpi-margen').textContent = fmt(margen);
 
         // Cargar también la tabla de historial de egresos en la pestaña 2
         cargarHistorialEgresos();
@@ -50,7 +61,7 @@ window.cargarEstadoFinanciero = async function() {
         console.error("Error cargando finanzas:", error);
         if(typeof mostrarNotificacion === 'function') mostrarNotificacion("Aviso", "Hubo un error cargando los datos financieros.", "error");
         
-        const elementos = ['fin-ingresos', 'fin-costos', 'fin-util-bruta', 'fin-cif', 'fin-util-antes', 'fin-ir', 'fin-iva', 'fin-liquida'];
+        const elementos = ['fin-ingresos', 'fin-costos', 'fin-util-bruta', 'fin-cif', 'fin-util-antes', 'fin-ir', 'fin-iva', 'fin-liquida', 'kpi-ingresos', 'kpi-salidas', 'kpi-margen'];
         elementos.forEach(el => {
             const domEl = document.getElementById(el);
             if (domEl) domEl.textContent = "0.00";

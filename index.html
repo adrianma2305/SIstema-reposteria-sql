@@ -333,28 +333,101 @@
         <!-- Contenido de las Pestañas -->
         <div class="tab-content bg-white p-4 border rounded border-top-0 shadow-sm" style="margin-top: -25px;">
           
-          <!-- 1. PESTAÑA: ESTADO DE RESULTADOS (DISEÑO RESTAURADO) -->
+          <!-- 1. PESTAÑA: ESTADO DE RESULTADOS (DISEÑO PREMIUM) -->
           <div class="tab-pane fade show active" id="tab-resultados">
-            <div class="card shadow-none border border-secondary" id="area-imprimir-finanzas">
-              <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between">
-                <span>Estado de Resultados (Pérdidas y Ganancias)</span>
-                <span id="lbl-mes-fiscal">Mes Actual</span>
+            
+            <!-- Tarjetas de Resumen Rápido (KPIs) -->
+            <div class="row mb-4 g-3">
+              <div class="col-md-4">
+                <div class="card bg-success text-white shadow-sm border-0 h-100 rounded-3">
+                  <div class="card-body py-3">
+                    <h6 class="text-uppercase fw-bold opacity-75 mb-1"><i class="bi bi-graph-up-arrow"></i> Ingresos del Mes</h6>
+                    <h3 class="fw-bold mb-0 text-truncate">C$ <span id="kpi-ingresos">0.00</span></h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card bg-danger text-white shadow-sm border-0 h-100 rounded-3">
+                  <div class="card-body py-3">
+                    <h6 class="text-uppercase fw-bold opacity-75 mb-1"><i class="bi bi-graph-down-arrow"></i> Total Salidas (Costos+Egresos)</h6>
+                    <h3 class="fw-bold mb-0 text-truncate">C$ <span id="kpi-salidas">0.00</span></h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card bg-primary text-white shadow-sm border-0 h-100 rounded-3">
+                  <div class="card-body py-3">
+                    <h6 class="text-uppercase fw-bold opacity-75 mb-1"><i class="bi bi-pie-chart-fill"></i> Margen de Ganancia Neto</h6>
+                    <h3 class="fw-bold mb-0"><span id="kpi-margen">0.00</span>%</h3>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tabla de Desglose P&L -->
+            <div class="card shadow-sm border-0 rounded-3" id="area-imprimir-finanzas">
+              <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center py-3">
+                <span class="fs-5"><i class="bi bi-journal-text"></i> Desglose de Pérdidas y Ganancias</span>
+                <span class="badge bg-light text-dark fs-6" id="lbl-mes-fiscal">Mes Actual</span>
               </div>
               <div class="card-body p-0">
-                <table class="table table-hover align-middle m-0 fs-5">
-                  <tbody>
-                    <tr><td class="ps-4">Ingresos Brutos por Ventas</td><td class="text-end fw-bold text-success pe-4">C$ <span id="fin-ingresos">0.00</span></td></tr>
-                    <tr><td class="ps-4">(-) Costo de Materia Prima (Según Recetas)</td><td class="text-end text-danger pe-4">C$ <span id="fin-costos">0.00</span></td></tr>
-                    <tr class="table-light"><td class="ps-4 fw-bold">UTILIDAD BRUTA</td><td class="text-end fw-bold pe-4">C$ <span id="fin-util-bruta">0.00</span></td></tr>
-                    <tr><td class="ps-4">(-) Egresos Operativos (Luz, Agua, Nómina, etc.)</td><td class="text-end text-danger pe-4">C$ <span id="fin-cif">0.00</span></td></tr>
-                    <tr class="table-warning"><td class="ps-4 fw-bold">UTILIDAD NETA ANTES DE IMPUESTOS</td><td class="text-end fw-bold pe-4">C$ <span id="fin-util-antes">0.00</span></td></tr>
-                    <tr><td class="ps-4">(-) Retención IR DGI (Anticipo 1%)</td><td class="text-end text-danger pe-4">C$ <span id="fin-ir">0.00</span></td></tr>
-                    <tr class="table-success text-dark"><td class="ps-4 fw-bold fs-4">UTILIDAD LÍQUIDA (Ganancia Real)</td><td class="text-end fw-bold fs-4 pe-4">C$ <span id="fin-liquida">0.00</span></td></tr>
-                  </tbody>
-                </table>
-                <div class="bg-light p-3 border-top text-center mt-3 mx-3 rounded mb-3" id="declaratoria-iva-box">
-                  <h6 class="fw-bold mb-1">Declaratoria IVA (DGI)</h6>
-                  <p class="m-0 small text-muted">Monto estimado a declarar en formulario de IVA (15% sobre ventas): <strong class="text-dark fs-5">C$ <span id="fin-iva">0.00</span></strong></p>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle m-0 fs-5 border-bottom">
+                    <tbody>
+                      <!-- Ingresos -->
+                      <tr>
+                        <td class="ps-4 py-3"><i class="bi bi-cash-coin text-success me-2"></i> Ingresos Brutos por Ventas</td>
+                        <td class="text-end fw-bold text-success pe-4">C$ <span id="fin-ingresos">0.00</span></td>
+                      </tr>
+                      
+                      <!-- Costos Directos -->
+                      <tr class="bg-light">
+                        <td class="ps-4 text-muted small fw-bold text-uppercase" colspan="2">Costos Directos de Producción</td>
+                      </tr>
+                      <tr>
+                        <td class="ps-4 py-2 text-muted"><i class="bi bi-box-seam me-2"></i> (-) Consumo de Materia Prima (Recetas)</td>
+                        <td class="text-end text-danger pe-4">C$ <span id="fin-costos">0.00</span></td>
+                      </tr>
+                      <tr class="table-secondary">
+                        <td class="ps-4 fw-bold"><i class="bi bi-calculator me-2"></i> UTILIDAD BRUTA</td>
+                        <td class="text-end fw-bold pe-4">C$ <span id="fin-util-bruta">0.00</span></td>
+                      </tr>
+
+                      <!-- Egresos Operativos -->
+                      <tr class="bg-light">
+                        <td class="ps-4 text-muted small fw-bold text-uppercase" colspan="2">Gastos Operativos (CIF)</td>
+                      </tr>
+                      <tr>
+                        <td class="ps-4 py-2 text-muted"><i class="bi bi-lightning-charge me-2"></i> (-) Egresos Operativos (Luz, Agua, Nómina)</td>
+                        <td class="text-end text-danger pe-4">C$ <span id="fin-cif">0.00</span></td>
+                      </tr>
+                      <tr class="table-warning">
+                        <td class="ps-4 fw-bold"><i class="bi bi-bank me-2"></i> UTILIDAD ANTES DE IMPUESTOS</td>
+                        <td class="text-end fw-bold pe-4">C$ <span id="fin-util-antes">0.00</span></td>
+                      </tr>
+
+                      <!-- Impuestos y Neto -->
+                      <tr class="bg-light">
+                        <td class="ps-4 text-muted small fw-bold text-uppercase" colspan="2">Obligaciones Fiscales</td>
+                      </tr>
+                      <tr>
+                        <td class="ps-4 py-2 text-muted"><i class="bi bi-receipt me-2"></i> (-) Retención IR DGI (Anticipo 1%)</td>
+                        <td class="text-end text-danger pe-4">C$ <span id="fin-ir">0.00</span></td>
+                      </tr>
+                      <tr class="table-success text-dark">
+                        <td class="ps-4 fw-bold fs-4 py-3"><i class="bi bi-piggy-bank-fill text-success me-2"></i> UTILIDAD LÍQUIDA (Ganancia)</td>
+                        <td class="text-end fw-bold fs-4 pe-4 text-success">C$ <span id="fin-liquida">0.00</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+                <!-- Footer Informativo -->
+                <div class="card-footer bg-white border-0 text-center py-4" id="declaratoria-iva-box">
+                  <div class="p-3 bg-light rounded-3 d-inline-block border">
+                    <h6 class="fw-bold mb-1 text-secondary"><i class="bi bi-info-circle-fill"></i> Declaratoria IVA (DGI)</h6>
+                    <p class="m-0 small text-muted">Monto proyectado a declarar en formulario de IVA (15% sobre ventas): <br><strong class="text-dark fs-4">C$ <span id="fin-iva">0.00</span></strong></p>
+                  </div>
                 </div>
               </div>
             </div>

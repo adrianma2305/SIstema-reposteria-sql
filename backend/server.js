@@ -581,6 +581,41 @@ app.get('/api/gastos/historial', async (req, res) => {
 });
 
 // 3. RUTA INTACTA: Tu súper Estado Financiero con el cálculo de Recetas
+// 1. REGISTRAR EGRESO (CORREGIDO: Ya recibe la descripción real)
+app.post('/api/gastos', async (req, res) => {
+    try {
+        const { tipo_gasto, monto_total, porcentaje_negocio, fecha, descripcion } = req.body;
+        let pool = await poolPromise;
+        
+        await pool.request()
+            .input('tipo', sql.VarChar, tipo_gasto)
+            .input('monto', sql.Decimal(10, 2), monto_total)
+            .input('porcentaje', sql.Decimal(5, 2), porcentaje_negocio)
+            .input('fecha', sql.Date, fecha || new Date())
+            .input('desc', sql.VarChar, descripcion) // <- AQUÍ ESTÁ LA CORRECCIÓN
+            .query("INSERT INTO Gastos_Operativos (tipo_gasto, monto_total, porcentaje_negocio, fecha, descripcion) VALUES (@tipo, @monto, @porcentaje, @fecha, @desc)");
+        
+        res.status(201).json({ message: 'OK' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 2. HISTORIAL DE EGRESOS (CORREGIDO: Devuelve la descripción)
+app.get('/api/gastos/historial', async (req, res) => {
+    try {
+        let pool = await poolPromise;
+        let result = await pool.request().query(`
+            SELECT tipo_gasto, monto_total, porcentaje_negocio, 
+                   (monto_total * (porcentaje_negocio / 100.0)) as deducible, 
+                   fecha, descripcion
+            FROM Gastos_Operativos 
+            WHERE MONTH(fecha) = MONTH(GETDATE()) AND YEAR(fecha) = YEAR(GETDATE())
+            ORDER BY fecha DESC
+        `);
+        res.json(result.recordset);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 3. ESTADO DE RESULTADOS (CORREGIDO: SQL seguro para Azure)
 app.get('/api/reportes/estado-financiero', async (req, res) => {
     try {
         let pool = await poolPromise;
@@ -591,21 +626,22 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
         let qVentas = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
             .query('SELECT ISNULL(SUM(total), 0) as ingresos FROM Ventas WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio');
         
-        // 2. Gastos 
+        // 2. Gastos Deducibles
         let qGastos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
             .query('SELECT ISNULL(SUM(monto_total * (porcentaje_negocio / 100.0)), 0) as gastos FROM Gastos_Operativos WHERE MONTH(fecha) = @mes AND YEAR(fecha) = @anio');
         
-        // 3. Costos de Materia Prima (Lógica Intacta)
+        // 3. Costos de Materia Prima (REESCRITO CON LEFT JOIN PARA EVITAR CRASHEO EN AZURE)
         let qCostos = await pool.request().input('mes', sql.Int, mes).input('anio', sql.Int, anio)
             .query(`
-                SELECT ISNULL(SUM(vd.cantidad * ISNULL((
-                    SELECT SUM(rd.cantidad_necesaria * i.precio) 
-                    FROM Recetas_Detalle rd 
-                    JOIN Insumos i ON rd.insumo_id = i.id 
-                    WHERE rd.producto_id = vd.producto_id
-                ), 0)), 0) as costo_ventas 
-                FROM Ventas_Detalle vd 
-                JOIN Ventas v ON vd.venta_id = v.id 
+                SELECT ISNULL(SUM(vd.cantidad * ISNULL(CostoReceta.CostoUnitario, 0)), 0) as costo_ventas
+                FROM Ventas_Detalle vd
+                JOIN Ventas v ON vd.venta_id = v.id
+                LEFT JOIN (
+                    SELECT rd.producto_id, SUM(rd.cantidad_necesaria * i.precio) as CostoUnitario
+                    FROM Recetas_Detalle rd
+                    JOIN Insumos i ON rd.insumo_id = i.id
+                    GROUP BY rd.producto_id
+                ) CostoReceta ON vd.producto_id = CostoReceta.producto_id
                 WHERE MONTH(v.fecha) = @mes AND YEAR(v.fecha) = @anio
             `);
 
@@ -621,12 +657,12 @@ app.get('/api/reportes/estado-financiero', async (req, res) => {
 
         res.json({ mes, anio, ingresos, costo_ventas, utilidad_bruta, cif, utilidad_neta_antes, impuestos: { iva_debito, ir_mensual }, utilidad_liquida });
     } catch (err) {
-        console.error("Error en reporte financiero:", err.message);
+        console.error("🔥 Error en P&L:", err.message);
         res.json({ mes: 1, anio: 2026, ingresos: 0, costo_ventas: 0, utilidad_bruta: 0, cif: 0, utilidad_neta_antes: 0, impuestos: { iva_debito: 0, ir_mensual: 0 }, utilidad_liquida: 0 });
     }
 });
 
-// 4. RUTA INTACTA: Corte de caja ultra-simplificado
+// 4. RUTA INTACTA: Corte de caja 
 app.get('/api/reportes/corte-caja', async (req, res) => {
     try {
         let pool = await poolPromise;
