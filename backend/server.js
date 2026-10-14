@@ -109,10 +109,19 @@ app.put('/api/empleados/:id/reactivar', async (req, res) => {
 // ==========================================
 // 2. MÓDULO DE INSUMOS Y KARDEX
 // ==========================================
+
+// CORREGIDO: Ahora calcula el stock dinámicamente desde el Kardex
 app.get('/api/insumos', async (req, res) => {
     try {
         let pool = await poolPromise;
-        let result = await pool.request().query('SELECT * FROM Insumos ORDER BY nombre ASC');
+        let result = await pool.request().query(`
+            SELECT i.*, 
+                   ISNULL((SELECT SUM(CASE WHEN tipo_movimiento = 'ENTRADA' THEN cantidad ELSE -cantidad END) FROM Kardex_Insumos WHERE insumo_id = i.id), 0) as stock_actual,
+                   p.nombre as nombre_proveedor
+            FROM Insumos i
+            LEFT JOIN Proveedores p ON i.proveedor_id = p.id
+            ORDER BY i.nombre ASC
+        `);
         res.json(result.recordset);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -129,6 +138,7 @@ app.get('/api/insumos/:id', async (req, res) => {
     }
 });
 
+// CORREGIDO: Se quitó la columna stock_actual del insert
 app.post('/api/insumos', async (req, res) => {
     try {
         const { nombre, unidad, precio, proveedor_id } = req.body;
@@ -138,7 +148,7 @@ app.post('/api/insumos', async (req, res) => {
             .input('unidad', sql.VarChar, unidad)
             .input('precio', sql.Decimal(10, 2), precio)
             .input('prov_id', sql.Int, proveedor_id || null)
-            .query('INSERT INTO Insumos (nombre, unidad, precio, proveedor_id, stock_actual, activo) VALUES (@nombre, @unidad, @precio, @prov_id, 0, 1)');
+            .query('INSERT INTO Insumos (nombre, unidad, precio, proveedor_id, activo) VALUES (@nombre, @unidad, @precio, @prov_id, 1)');
         res.status(201).json({ message: 'OK' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -184,6 +194,7 @@ app.get('/api/insumos/:id/kardex', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// CORREGIDO: Compra rápida ya no intenta actualizar la columna fantasma
 app.post('/api/compras/rapida', async (req, res) => {
     try {
         const { proveedor_id, insumo_id, cantidad, costo_total, empleado_id, tipo_pago } = req.body;
@@ -192,17 +203,15 @@ app.post('/api/compras/rapida', async (req, res) => {
         await transaction.begin();
 
         try {
-            await transaction.request()
-                .input('id', sql.Int, insumo_id)
-                .input('cant', sql.Decimal(10, 2), cantidad)
-                .query('UPDATE Insumos SET stock_actual = stock_actual + @cant WHERE id = @id');
-
+            // 1. Guardar directo en Kardex (Esto genera el stock)
             await transaction.request()
                 .input('insumo_id', sql.Int, insumo_id)
                 .input('cant', sql.Decimal(10, 2), cantidad)
                 .input('motivo', sql.VarChar, 'Compra Rápida')
-                .query("INSERT INTO Kardex_Insumos (insumo_id, tipo_movimiento, cantidad, fecha, motivo) VALUES (@insumo_id, 'ENTRADA', @cant, GETDATE(), @motivo)");
+                .input('usu_id', sql.Int, empleado_id || 1)
+                .query("INSERT INTO Kardex_Insumos (insumo_id, tipo_movimiento, cantidad, fecha, motivo, usuario_id) VALUES (@insumo_id, 'ENTRADA', @cant, GETDATE(), @motivo, @usu_id)");
 
+            // 2. Afectar Finanzas o Cuentas por Pagar
             if(tipo_pago === 'CREDITO') {
                 await transaction.request()
                     .input('prov_id', sql.Int, proveedor_id)
@@ -218,6 +227,7 @@ app.post('/api/compras/rapida', async (req, res) => {
             res.status(201).json({ message: 'OK' });
         } catch (err) {
             await transaction.rollback();
+            console.error("Error Transaccion Compra:", err.message);
             res.status(500).json({ error: err.message });
         }
     } catch (err) { res.status(500).json({ error: err.message }); }
